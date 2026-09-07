@@ -31,7 +31,6 @@ import {
   MIN_PLAYERS,
   PADDLE_DEPTH,
   PADDLE_LENGTH,
-  SERVER_PORT,
 } from '../../shared/constants';
 import {
   arenaEdgeForPlayer,
@@ -122,7 +121,8 @@ worldGroup.add(arenaGroup, paddleGroup, obstacleGroup, ballGroup);
 scene.add(worldGroup);
 
 const colors = [0xff4f6d, 0x4fffa4, 0x65a6ff, 0xf7f75c, 0xff9a42, 0xca7cff, 0x42ecff, 0xffffff];
-const client = new Client(`ws://${location.hostname || '127.0.0.1'}:${SERVER_PORT}`);
+const pongServerUrl = import.meta.env.VITE_PONG_WS_URL || `ws://${location.hostname || '127.0.0.1'}:2567`;
+const client = new Client(pongServerUrl);
 
 let room: Room | null = null;
 let mySessionId = '';

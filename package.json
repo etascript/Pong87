@@ -8,8 +8,7 @@
     "dev:client": "vite --host 127.0.0.1",
     "dev:server": "tsx watch server/src/index.ts",
     "build": "tsc --noEmit && vite build",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist",
+    "deploy": "tsc --noEmit && vite build --base=/Pong87/ && gh-pages -d dist",
     "preview": "vite preview --host 127.0.0.1",
     "start:server": "tsx server/src/index.ts"
   },

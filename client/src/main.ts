@@ -18,13 +18,13 @@ import { loadSettings, saveSettings as persistSettings } from './game/settings';
 import type { BallSnapshot, LobbyFlow, MenuView, ObstacleSnapshot, PongSnapshot } from './game/types';
 import { syncObstacleVisuals as syncObstacleMeshes } from './render/obstacles';
 import {
-  ABSOLUTE_MAX_BALLS,
   ARENA_RADIUS,
   BALL_RADIUS,
   BALL_SPAWN_INTERVAL,
   BALL_SPEED,
   activeBallLimitForMatch,
   ballSpeedForHitCount,
+  respawnBallSpeedForPlayerCount,
   DEFAULT_PLAYER_COUNT,
   FIXED_DT,
   MAX_PLAYERS,
@@ -784,7 +784,7 @@ function makeOfflineSnapshot(
   return nextSnapshot;
 }
 
-function randomBall(towardEdge = -1, playerCount = snapshot.sides || DEFAULT_PLAYER_COUNT): BallSnapshot {
+function randomBall(towardEdge = -1, playerCount = snapshot.sides || DEFAULT_PLAYER_COUNT, inheritedSpeed = 0): BallSnapshot {
   const edges = polygonEdges(playfieldSides(playerCount), playfieldRadius(playerCount, ARENA_RADIUS));
   const arenaEdge = towardEdge >= 0 ? arenaEdgeForPlayer(towardEdge, playerCount) : -1;
   const angleBase = arenaEdge >= 0
@@ -793,7 +793,7 @@ function randomBall(towardEdge = -1, playerCount = snapshot.sides || DEFAULT_PLA
       ? (Math.random() < 0.5 ? 0 : Math.PI)
       : Math.random() * Math.PI * 2;
   const angle = angleBase + (Math.random() - 0.5) * 0.65;
-  const speed = BALL_SPEED + Math.min(snapshot.balls?.length ?? 0, ABSOLUTE_MAX_BALLS - 1) * 0.25;
+  const speed = respawnBallSpeedForPlayerCount(playerCount, snapshot.balls?.length ?? 0, inheritedSpeed);
   return {
     id: `local-ball-${ballSetId++}`,
     x: 0,
@@ -810,7 +810,7 @@ function randomBall(towardEdge = -1, playerCount = snapshot.sides || DEFAULT_PLA
 function accelerateBallAfterHit(ball: BallSnapshot, bonusSpeed = 0) {
   ball.hitCount += 1;
   const currentSpeed = Math.hypot(ball.vx, ball.vy) || BALL_SPEED;
-  const targetSpeed = ballSpeedForHitCount(ball.hitCount) + bonusSpeed;
+  const targetSpeed = ballSpeedForHitCount(ball.hitCount, snapshot.sides) + bonusSpeed;
   ball.vx = (ball.vx / currentSpeed) * targetSpeed;
   ball.vy = (ball.vy / currentSpeed) * targetSpeed;
 }
@@ -1047,9 +1047,10 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
       snapshot.balls = [];
     } else {
       snapshot.round += 1;
+      const scoredBallSpeed = Math.hypot(ball.vx, ball.vy);
       snapshot.balls.splice(ballIndex, 1);
       if (snapshot.balls.length < activeBallLimitForMatch(snapshot.sides, offlineMatchElapsed)) {
-        snapshot.balls.push(randomBall(player.edgeIndex));
+        snapshot.balls.push(randomBall(player.edgeIndex, snapshot.sides, scoredBallSpeed));
         ballSpawnTimer = 0;
       }
     }

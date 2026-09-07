@@ -7,13 +7,13 @@ import { Client, Room, Server } from 'colyseus';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { ArraySchema, MapSchema, Schema, type } from '@colyseus/schema';
 import {
-  ABSOLUTE_MAX_BALLS,
   ARENA_RADIUS,
   BALL_RADIUS,
   BALL_SPAWN_INTERVAL,
   BALL_SPEED,
   activeBallLimitForMatch,
   ballSpeedForHitCount,
+  respawnBallSpeedForPlayerCount,
   DEFAULT_SCORE_TIME,
   DEFAULT_PLAYER_COUNT,
   FIXED_DT,
@@ -668,7 +668,7 @@ export class PongRoom extends Room<PongState> {
     this.syncPrimaryBall();
   }
 
-  private spawnBall(towardEdge = -1) {
+  private spawnBall(towardEdge = -1, inheritedSpeed = 0) {
     const edges = polygonEdges(playfieldSides(this.state.sides), playfieldRadius(this.state.sides, ARENA_RADIUS));
     const arenaEdge = towardEdge >= 0 ? arenaEdgeForPlayer(towardEdge, this.state.sides) : -1;
     const angleBase = arenaEdge >= 0
@@ -682,7 +682,7 @@ export class PongRoom extends Room<PongState> {
     ball.id = `srv-ball-${this.ballSetId}`;
     ball.x = (Math.random() - 0.5) * 0.55;
     ball.y = (Math.random() - 0.5) * 0.55;
-    const speed = BALL_SPEED + Math.min(this.state.balls.length, ABSOLUTE_MAX_BALLS - 1) * 0.25;
+    const speed = respawnBallSpeedForPlayerCount(this.state.sides, this.state.balls.length, inheritedSpeed);
     ball.vx = Math.cos(angle) * speed;
     ball.vy = Math.sin(angle) * speed;
     ball.lastTouchEdge = -1;
@@ -697,15 +697,17 @@ export class PongRoom extends Room<PongState> {
   private accelerateBallAfterHit(ball: BallState, bonusSpeed = 0) {
     ball.hitCount += 1;
     const currentSpeed = Math.hypot(ball.vx, ball.vy) || BALL_SPEED;
-    const targetSpeed = ballSpeedForHitCount(ball.hitCount) + bonusSpeed;
+    const targetSpeed = ballSpeedForHitCount(ball.hitCount, this.state.sides) + bonusSpeed;
     ball.vx = (ball.vx / currentSpeed) * targetSpeed;
     ball.vy = (ball.vy / currentSpeed) * targetSpeed;
   }
 
   private removeBall(ballIndex: number, towardEdge = -1) {
+    const removedBall = this.state.balls[ballIndex];
+    const inheritedSpeed = removedBall ? Math.hypot(removedBall.vx, removedBall.vy) : 0;
     this.state.balls.splice(ballIndex, 1);
     if (this.state.phase === 'playing' && this.state.balls.length < activeBallLimitForMatch(this.state.sides, this.matchElapsed)) {
-      this.spawnBall(towardEdge);
+      this.spawnBall(towardEdge, inheritedSpeed);
       this.ballSpawnTimer = 0;
     }
     this.syncPrimaryBall();

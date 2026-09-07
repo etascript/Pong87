@@ -1,0 +1,15 @@
+{"at":"2026-09-05T23:27:27.240Z","event":"room_created","roomId":"O4NYT","sides":4,"mode":"score","livesPerPlayer":5,"matchTimeSeconds":150}
+{"at":"2026-09-05T23:27:27.260Z","event":"player_joined","roomId":"O4NYT","sessionId":"FvlbTBPA5","edgeIndex":0,"name":"Jugador"}
+{"at":"2026-09-05T23:27:36.932Z","event":"player_left","roomId":"O4NYT","sessionId":"FvlbTBPA5","edgeIndex":0}
+{"at":"2026-09-05T23:27:41.424Z","event":"room_created","roomId":"XGMTK","sides":4,"mode":"score","livesPerPlayer":5,"matchTimeSeconds":150}
+{"at":"2026-09-05T23:27:41.430Z","event":"player_joined","roomId":"XGMTK","sessionId":"BVGwL1FY7","edgeIndex":0,"name":"Jugador"}
+{"at":"2026-09-05T23:31:44.206Z","event":"player_left","roomId":"XGMTK","sessionId":"BVGwL1FY7","edgeIndex":0}
+{"at":"2026-09-06T14:30:24.428Z","event":"room_created","roomId":"P87-71D9C","sides":4,"mode":"score","livesPerPlayer":5,"matchTimeSeconds":150}
+{"at":"2026-09-06T14:30:24.461Z","event":"player_joined","roomId":"P87-71D9C","sessionId":"XNQ1wTjhd","edgeIndex":0,"name":"Jugador RPG"}
+{"at":"2026-09-06T14:30:33.301Z","event":"player_left","roomId":"P87-71D9C","sessionId":"XNQ1wTjhd","edgeIndex":0}
+{"at":"2026-09-06T14:30:37.161Z","event":"room_created","roomId":"P87-0F682","sides":4,"mode":"score","livesPerPlayer":5,"matchTimeSeconds":150}
+{"at":"2026-09-06T14:30:37.170Z","event":"player_joined","roomId":"P87-0F682","sessionId":"xp5MpRUpL","edgeIndex":0,"name":"Jugador RPG"}
+{"at":"2026-09-06T14:30:53.102Z","event":"player_left","roomId":"P87-0F682","sessionId":"xp5MpRUpL","edgeIndex":0}
+{"at":"2026-09-06T14:45:35.961Z","event":"room_created","roomId":"P87-F6BCF","sides":4,"mode":"score","livesPerPlayer":5,"matchTimeSeconds":150}
+{"at":"2026-09-06T14:45:35.994Z","event":"player_joined","roomId":"P87-F6BCF","sessionId":"PhEXnnZv7","edgeIndex":0,"name":"Jugador RPG","replacingBot":false}
+{"at":"2026-09-06T14:45:37.554Z","event":"player_left","roomId":"P87-F6BCF","sessionId":"PhEXnnZv7","edgeIndex":0}

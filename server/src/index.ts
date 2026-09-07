@@ -124,6 +124,7 @@ type InputMessage = {
   paddle?: number;
   charge?: boolean;
   ready?: boolean;
+  forceStart?: boolean;
 };
 
 export class PongRoom extends Room<PongState> {
@@ -281,6 +282,22 @@ export class PongRoom extends Room<PongState> {
 
     if (message.charge) {
       player.charge = true;
+    }
+
+    if (message.forceStart && this.state.phase === 'lobby') {
+      player.ready = true;
+      this.readyDeadlineAt = 0;
+      this.readyNoticeSecond = -1;
+      this.state.lastEvent = 'Completando con IA';
+      writeActivity('ready_wait_skipped', { roomId: this.roomId, sessionId: client.sessionId, humans: this.humanPlayers().length, sides: this.state.sides });
+      reportArcadeEvent(this.arcadeContext, 'room.ready_wait_skipped', {
+        sessionId: client.sessionId,
+        userId: this.arcadeUserIds.get(client.sessionId),
+        humans: this.humanPlayers().length,
+        sides: this.state.sides,
+      });
+      this.startMatchWithBots();
+      return;
     }
 
     if (typeof message.ready === 'boolean') {

@@ -94,6 +94,7 @@ const backButtons = document.querySelectorAll<HTMLButtonElement>('.back-button')
 const createButton = document.querySelector<HTMLButtonElement>('#createButton')!;
 const joinButton = document.querySelector<HTMLButtonElement>('#joinButton')!;
 const offlineButton = document.querySelector<HTMLButtonElement>('#offlineButton')!;
+const forceStartButton = document.querySelector<HTMLButtonElement>('#forceStartButton')!;
 const readyButton = document.querySelector<HTMLButtonElement>('#readyButton')!;
 const menuBackButton = document.querySelector<HTMLButtonElement>('#menuBackButton')!;
 const pauseButton = document.querySelector<HTMLButtonElement>('#pauseButton')!;
@@ -506,6 +507,10 @@ function syncUI() {
   resultsPanel.classList.toggle('hidden', snapshot.phase !== 'results');
   maybeReportArcadeOfflineResult();
   waitingRoomCode.textContent = roomCode.textContent || '----';
+  const connectedHumans = snapshot.seats.filter((player) => player.connected && !player.id.startsWith('bot-')).length;
+  const canForceStart = Boolean(room) && !offlineMode && snapshot.phase === 'lobby' && connectedHumans > 0 && connectedHumans < snapshot.sides;
+  forceStartButton.classList.toggle('hidden', !canForceStart);
+  forceStartButton.disabled = !canForceStart;
   readyButton.textContent = offlineMode ? t('restart') : mine?.ready ? t('waiting') : t('ready');
   statusText.textContent = `${snapshot.lastEvent}${snapshot.phase === 'countdown' ? ` ${Math.ceil(snapshot.countdown)}` : ''}`;
   modeText.textContent = snapshot.mode === 'score' ? 'SCORE' : offlineMode ? 'SIM' : room ? 'K.O.' : 'STANDBY';
@@ -720,6 +725,9 @@ livesInput.addEventListener('change', normalizeMatchOptions);
 createButton.addEventListener('click', () => createRoom().catch(showError));
 joinButton.addEventListener('click', () => joinRoom().catch(showError));
 offlineButton.addEventListener('click', () => startOffline().catch(showError));
+forceStartButton.addEventListener('click', () => {
+  room?.send('input', { forceStart: true });
+});
 readyButton.addEventListener('click', () => {
   if (offlineMode) {
     startOffline().catch(showError);

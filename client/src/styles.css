@@ -397,7 +397,9 @@ input[type="range"] {
 
 .center-panel[data-flow="single"] .actions,
 .center-panel[data-flow="single"] #readyButton,
-.center-panel[data-flow="multi"] #offlineButton {
+.center-panel[data-flow="single"] #forceStartButton,
+.center-panel[data-flow="multi"] #offlineButton,
+#forceStartButton.hidden {
   display: none;
 }
 
@@ -570,6 +572,13 @@ select:focus {
 
 .boot-actions {
   grid-template-columns: 1fr 1fr;
+}
+
+.force-start {
+  grid-column: 1 / -1;
+  border-color: rgba(255, 228, 94, 0.62);
+  background: linear-gradient(180deg, rgba(255, 228, 94, 0.26), rgba(255, 61, 242, 0.18));
+  color: var(--yellow);
 }
 
 button {

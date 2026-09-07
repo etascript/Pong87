@@ -67,6 +67,7 @@
     </div>
     <div class="boot-actions">
       <button id="offlineButton" class="offline" type="button" data-i18n="cpuJam">CPU Jam</button>
+      <button id="forceStartButton" class="force-start hidden" type="button" data-i18n="fillWithBots">Completar con IA</button>
       <button id="readyButton" class="ready" type="button" disabled data-i18n="ready">Ready</button>
       <button id="menuBackButton" class="ghost" type="button" data-i18n="mainMenu">Menu</button>
     </div>

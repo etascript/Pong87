@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../../YoY/yoy-rpg-pokemon"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../arcade-hub"
+		}
+	],
+	"settings": {}
+}

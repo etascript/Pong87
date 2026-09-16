@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
-  base: process.env.GITHUB_PAGES_BASE || (process.env.NODE_ENV === 'production' ? '/Pong87/' : '/'),
+  base: process.env.VITE_BASE_PATH || '/',
   plugins: [vue()],
   server: {
     port: 5174,

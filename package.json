@@ -8,9 +8,10 @@
     "dev:client": "vite --host 127.0.0.1",
     "dev:server": "tsx watch server/src/index.ts",
     "build": "tsc --noEmit && vite build",
+    "build:pages": "tsc --noEmit && vite build --base=/Pong87/",
     "docker:build": "docker build -t pong87 .",
     "docker:run": "docker run --rm -p 2567:2567 --name pong87 pong87",
-    "deploy": "tsc --noEmit && vite build --base=/Pong87/ && gh-pages -d dist",
+    "deploy": "npm run build:pages && gh-pages -d dist",
     "preview": "vite preview --host 127.0.0.1",
     "start:server": "tsx server/src/index.ts"
   },

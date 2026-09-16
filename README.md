@@ -50,6 +50,7 @@ Prototipo web multiplayer inspirado en Pong, pensado mobile first. La arena camb
 npm install
 npm run dev
 npm run build
+npm run build:pages
 ```
 
 El cliente corre en `http://127.0.0.1:5174/` y el servidor Colyseus en `ws://127.0.0.1:2567`.

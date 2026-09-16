@@ -10,6 +10,7 @@ COPY . .
 
 ARG VITE_PONG_WS_URL=
 ENV VITE_PONG_WS_URL=${VITE_PONG_WS_URL}
+ENV VITE_BASE_PATH=/
 RUN npm run build
 RUN npm prune --omit=dev
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { appendFileSync, mkdirSync } from 'fs';
+import { appendFileSync, existsSync, mkdirSync } from 'fs';
 import { createServer } from 'http';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -42,6 +42,7 @@ import { reportArcadeEvent, reportArcadeResult, type ArcadeContext, type ArcadeP
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const activityLogPath = join(__dirname, '..', 'logs', 'activity.jsonl');
+const publicDistPath = join(__dirname, '..', '..', 'dist');
 const READY_BOT_FILL_DELAY = 60;
 
 function writeActivity(event: string, payload: Record<string, unknown>) {
@@ -907,6 +908,13 @@ export class PongRoom extends Room<PongState> {
 const app = express();
 app.get('/health', (_request, response) => response.json({ ok: true }));
 
+if (existsSync(publicDistPath)) {
+  app.use(express.static(publicDistPath));
+  app.get(/^\/(?!health$).*/, (_request, response) => {
+    response.sendFile(join(publicDistPath, 'index.html'));
+  });
+}
+
 const server = createServer(app);
 const gameServer = new Server({
   transport: new WebSocketTransport({ server }),
@@ -914,6 +922,7 @@ const gameServer = new Server({
 
 gameServer.define('polygon_pong', PongRoom);
 
-server.listen(SERVER_PORT, () => {
-  console.log(`PONG 87 server listening on ws://127.0.0.1:${SERVER_PORT}`);
+const port = Number(process.env.PORT || SERVER_PORT);
+server.listen(port, '0.0.0.0', () => {
+  console.log(`PONG87 server listening on http://0.0.0.0:${port}`);
 });

@@ -1,0 +1,10 @@
+node_modules
+.vite
+dist
+.git
+.github
+server/logs
+npm-debug.log*
+Dockerfile
+docker-compose.yml
+*.code-workspace

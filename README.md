@@ -52,7 +52,41 @@ npm run dev
 npm run build
 ```
 
-El cliente corre en `http://127.0.0.1:5173/` y el servidor Colyseus en `ws://127.0.0.1:2567`.
+El cliente corre en `http://127.0.0.1:5174/` y el servidor Colyseus en `ws://127.0.0.1:2567`.
+
+## Docker
+
+PONG87 queda preparado para correr cliente estatico y servidor Colyseus desde el mismo contenedor:
+
+```bash
+docker compose up --build
+```
+
+Despues abre:
+
+```text
+http://127.0.0.1:2567/
+```
+
+Comandos equivalentes sin Compose:
+
+```bash
+npm run docker:build
+npm run docker:run
+```
+
+Para apuntar a un WebSocket externo durante el build:
+
+```bash
+docker build --build-arg VITE_PONG_WS_URL=wss://tu-host.example -t pong87 .
+```
+
+Variables runtime utiles:
+
+```text
+PORT=2567
+ARCADE_HUB_URL=http://host.docker.internal:2580
+```
 
 ## Modos
 

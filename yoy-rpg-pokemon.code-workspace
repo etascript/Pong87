@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../arcade-hub"
+		},
+		{
+			"path": "../doom-web"
 		}
 	],
 	"settings": {}

@@ -2,7 +2,30 @@
   "hash": "a1fe1eed",
   "configHash": "18ea46eb",
   "lockfileHash": "0516d09f",
-  "browserHash": "c75555fc",
-  "optimized": {},
-  "chunks": {}
+  "browserHash": "859f91be",
+  "optimized": {
+    "colyseus.js": {
+      "src": "../../node_modules/colyseus.js/build/cjs/index.js",
+      "file": "colyseus__js.js",
+      "fileHash": "0317c103",
+      "needsInterop": true
+    },
+    "three": {
+      "src": "../../node_modules/three/build/three.module.js",
+      "file": "three.js",
+      "fileHash": "a4186bb1",
+      "needsInterop": false
+    },
+    "vue": {
+      "src": "../../node_modules/vue/dist/vue.runtime.esm-bundler.js",
+      "file": "vue.js",
+      "fileHash": "e7862c6d",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-RYAC3CEE": {
+      "file": "chunk-RYAC3CEE.js"
+    }
+  }
 }

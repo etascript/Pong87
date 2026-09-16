@@ -1,5 +1,5 @@
 {
-  "name": "polygon-pong",
+  "name": "pong87",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,6 +8,8 @@
     "dev:client": "vite --host 127.0.0.1",
     "dev:server": "tsx watch server/src/index.ts",
     "build": "tsc --noEmit && vite build",
+    "docker:build": "docker build -t pong87 .",
+    "docker:run": "docker run --rm -p 2567:2567 --name pong87 pong87",
     "deploy": "tsc --noEmit && vite build --base=/Pong87/ && gh-pages -d dist",
     "preview": "vite preview --host 127.0.0.1",
     "start:server": "tsx server/src/index.ts"
@@ -21,6 +23,7 @@
     "colyseus.js": "0.16.22",
     "express": "^5.1.0",
     "three": "^0.179.1",
+    "tsx": "^4.20.5",
     "vue": "^3.5.42"
   },
   "devDependencies": {
@@ -29,7 +32,6 @@
     "@types/three": "^0.179.0",
     "concurrently": "^9.2.1",
     "gh-pages": "^6.3.0",
-    "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vite": "^7.1.3"
   },

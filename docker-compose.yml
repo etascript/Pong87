@@ -2,19 +2,31 @@ services:
   pong87:
     container_name: pong87
     image: pong87
+
     build:
       context: .
       args:
         VITE_PONG_WS_URL: ""
+
     environment:
       NODE_ENV: production
-      PORT: 2567
+      PORT: 7001
       ARCADE_HUB_URL: ${ARCADE_HUB_URL:-http://host.docker.internal:2580}
-    ports:
-      - "2567:2567"
+
+    expose:
+      - "7001"
+
     volumes:
       - pong87-logs:/app/server/logs
+
     restart: unless-stopped
+
+    networks:
+      - proxy
 
 volumes:
   pong87-logs:
+
+networks:
+  proxy:
+    external: true

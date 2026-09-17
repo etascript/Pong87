@@ -21,7 +21,7 @@ import {
   MATCH_TIME_STEP,
   MIN_MATCH_TIME,
   MIN_PLAYERS,
-  PADDLE_LENGTH,
+  paddleLengthForPlayerCount,
   PLAYER_LIVES,
   ROUND_START_DELAY,
   SERVER_PORT,
@@ -727,9 +727,16 @@ export class PongRoom extends Room<PongState> {
     const removedBall = this.state.balls[ballIndex];
     const inheritedSpeed = removedBall ? Math.hypot(removedBall.vx, removedBall.vy) : 0;
     this.state.balls.splice(ballIndex, 1);
-    if (this.state.phase === 'playing' && this.state.balls.length === 0) {
-      this.spawnBall(towardEdge, inheritedSpeed);
-      this.ballSpawnTimer = 0;
+    if (this.state.phase === 'playing') {
+      const activeBallLimit = activeBallLimitForMatch(this.state.sides, this.matchElapsed);
+      let respawned = 0;
+      while (this.state.balls.length < activeBallLimit) {
+        this.spawnBall(towardEdge, respawned === 0 ? inheritedSpeed : 0);
+        respawned += 1;
+      }
+      if (respawned > 0) {
+        writeActivity('balls_refilled', { roomId: this.roomId, count: this.state.balls.length, activeBallLimit });
+      }
     }
     this.syncPrimaryBall();
   }
@@ -807,7 +814,7 @@ export class PongRoom extends Room<PongState> {
         this.state.lastEvent = `Muro ${index + 1} reboto`;
         return;
       }
-      const paddleHalf = PADDLE_LENGTH / edge.length / 2;
+      const paddleHalf = paddleLengthForPlayerCount(this.state.sides) / edge.length / 2;
       const eliminatedWall = this.state.mode === 'elimination' && player.connected && player.lives <= 0;
       const insidePaddle = player.connected && player.lives > 0 && Math.abs(t - player.paddle) <= paddleHalf;
 

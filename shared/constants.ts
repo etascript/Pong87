@@ -20,6 +20,27 @@ export const MATCH_TIME_STEP = 30;
 export const FIXED_DT = 1 / 60;
 export const ROUND_START_DELAY = 1.0;
 
+function playfieldSidesForPlayerCount(playerCount: number) {
+  return playerCount <= 3 ? 4 : playerCount;
+}
+
+function playfieldRadiusForPlayerCount(playerCount: number) {
+  if (playerCount <= 2) return ARENA_RADIUS * 1.04;
+  return ARENA_RADIUS * (1.08 + Math.max(0, playerCount - 4) * 0.055);
+}
+
+function polygonEdgeLengthForPlayerCount(playerCount: number) {
+  const sides = playfieldSidesForPlayerCount(playerCount);
+  return 2 * playfieldRadiusForPlayerCount(playerCount) * Math.sin(Math.PI / sides);
+}
+
+export function paddleLengthForPlayerCount(playerCount: number) {
+  const defaultEdgeLength = polygonEdgeLengthForPlayerCount(DEFAULT_PLAYER_COUNT);
+  const edgeCoverage = PADDLE_LENGTH / defaultEdgeLength;
+  const proportionalLength = polygonEdgeLengthForPlayerCount(playerCount) * edgeCoverage;
+  return Math.max(1.45, Math.min(PADDLE_LENGTH, proportionalLength));
+}
+
 export function maxBallsForPlayerCount(playerCount: number) {
   return ABSOLUTE_MAX_BALLS;
 }

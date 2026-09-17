@@ -26,6 +26,7 @@ import {
   BALL_SPEED,
   activeBallLimitForMatch,
   ballSpeedForHitCount,
+  paddleLengthForPlayerCount,
   respawnBallSpeedForPlayerCount,
   DEFAULT_PLAYER_COUNT,
   FIXED_DT,
@@ -1084,7 +1085,7 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
       return;
     }
 
-    const paddleHalf = PADDLE_LENGTH / edge.length / 2;
+    const paddleHalf = paddleLengthForPlayerCount(snapshot.sides) / edge.length / 2;
     const visiblePaddle = player.id === mySessionId ? localPaddle : player.paddle;
     const eliminatedWall = snapshot.mode === 'elimination' && player.connected && player.lives <= 0;
     const insidePaddle = player.connected && player.lives > 0 && Math.abs(t - visiblePaddle) <= paddleHalf;
@@ -1149,9 +1150,14 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
       snapshot.round += 1;
       const scoredBallSpeed = Math.hypot(ball.vx, ball.vy);
       snapshot.balls.splice(ballIndex, 1);
-      if (snapshot.balls.length === 0) {
-        snapshot.balls.push(randomBall(player.edgeIndex, snapshot.sides, scoredBallSpeed));
-        ballSpawnTimer = 0;
+      const activeBallLimit = activeBallLimitForMatch(snapshot.sides, offlineMatchElapsed);
+      let respawned = 0;
+      while (snapshot.balls.length < activeBallLimit) {
+        snapshot.balls.push(randomBall(player.edgeIndex, snapshot.sides, respawned === 0 ? scoredBallSpeed : 0));
+        respawned += 1;
+      }
+      if (respawned > 0) {
+        playSound('spawn');
       }
     }
 
@@ -1218,7 +1224,8 @@ function updateVisuals(time: number) {
         0.45,
       );
       paddle.rotation.z = edge.angle;
-      paddle.scale.x = eliminatedWall ? edge.length / PADDLE_LENGTH : 1;
+      const paddleLength = paddleLengthForPlayerCount(snapshot.sides);
+      paddle.scale.x = eliminatedWall ? edge.length / PADDLE_LENGTH : paddleLength / PADDLE_LENGTH;
       paddle.scale.y = eliminatedWall ? 0.32 : player?.connected ? 1 : 0.35;
       updatePaddleVisual(paddle, {
         color: colors[playerIndex % colors.length],

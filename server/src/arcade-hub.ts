@@ -1,3 +1,7 @@
+import { appendFileSync, mkdirSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
 export type ArcadeContext = {
   token?: string;
   roomId?: string;
@@ -14,10 +18,21 @@ export type ArcadePlayerResult = {
   metadata?: Record<string, unknown>;
 };
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const telemetryLogPath = join(__dirname, '..', 'logs', 'telemetry.jsonl');
 const hubUrl = process.env.ARCADE_HUB_URL || 'http://127.0.0.1:2580';
 const protocol = 'arcade-hub.v1';
 const gameId = 'pong87';
 const gameVersion = '0.1.0';
+
+function writeTelemetryLog(entry: Record<string, unknown>) {
+  try {
+    mkdirSync(dirname(telemetryLogPath), { recursive: true });
+    appendFileSync(telemetryLogPath, JSON.stringify(entry) + '\n', 'utf8');
+  } catch (error) {
+    console.error('telemetry_log_failed', error);
+  }
+}
 
 async function post(path: string, payload: Record<string, unknown>, targetHubUrl = hubUrl) {
   try {
@@ -58,8 +73,10 @@ export function reportArcadeEvent(
   eventType: string,
   payload: Record<string, unknown> = {},
 ) {
+  const envelope = telemetryEnvelope(context, eventType, payload);
+  writeTelemetryLog(envelope);
   if (!context.token) return;
-  void post('/api/telemetry', telemetryEnvelope(context, eventType, payload), context.hubUrl);
+  void post('/api/telemetry', envelope, context.hubUrl);
 }
 
 export function reportArcadeResult(
@@ -67,9 +84,8 @@ export function reportArcadeResult(
   players: ArcadePlayerResult[],
   metadata: Record<string, unknown> = {},
 ) {
-  if (!context.token) return;
   const winner = players.find((player) => player.placement === 1) || players[0];
-  void post('/api/results', {
+  const result = {
     gameId,
     roomId: context.roomId,
     winnerUserId: winner?.userId,
@@ -79,5 +95,21 @@ export function reportArcadeResult(
       ...metadata,
       source: 'pong87-server',
     },
-  }, context.hubUrl);
+  };
+  writeTelemetryLog({
+    protocol,
+    eventId: crypto.randomUUID(),
+    eventType: 'match.result',
+    source: {
+      gameId,
+      runtime: 'server',
+      version: gameVersion,
+    },
+    occurredAt: new Date().toISOString(),
+    roomId: context.roomId,
+    userId: context.userId,
+    payload: result,
+  });
+  if (!context.token) return;
+  void post('/api/results', result, context.hubUrl);
 }

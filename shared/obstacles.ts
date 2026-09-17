@@ -1,6 +1,6 @@
 import { clamp } from './geometry';
 
-export type ObstacleVariant = 'post' | 'barrier' | 'bumper';
+export type ObstacleVariant = 'post' | 'barrier' | 'bumper' | 'spinner' | 'crystal';
 
 export type ObstacleConfig = {
   id: string;
@@ -72,7 +72,7 @@ function weightedShuffle<T extends { weight: number }>(items: T[], rng: () => nu
 }
 
 function obstacleVariant(index: number, rng: () => number): ObstacleVariant {
-  const pattern: ObstacleVariant[] = ['bumper', 'post', 'barrier', 'bumper', 'post', 'bumper'];
+  const pattern: ObstacleVariant[] = ['bumper', 'post', 'barrier', 'spinner', 'crystal', 'bumper', 'post'];
   const variant = pattern[index % pattern.length];
   if (rng() < 0.12) return pattern[Math.floor(rng() * pattern.length)];
   return variant;
@@ -80,8 +80,18 @@ function obstacleVariant(index: number, rng: () => number): ObstacleVariant {
 
 function obstacleRadius(variant: ObstacleVariant, rng: () => number) {
   if (variant === 'barrier') return 0.5 + rng() * 0.14;
+  if (variant === 'spinner') return 0.48 + rng() * 0.11;
+  if (variant === 'crystal') return 0.38 + rng() * 0.12;
   if (variant === 'bumper') return 0.42 + rng() * 0.13;
   return 0.34 + rng() * 0.11;
+}
+
+function obstacleSides(variant: ObstacleVariant) {
+  if (variant === 'bumper') return 8;
+  if (variant === 'barrier') return 4;
+  if (variant === 'spinner') return 6;
+  if (variant === 'crystal') return 5;
+  return 16;
 }
 
 export function createObstacleSet(
@@ -122,7 +132,7 @@ export function createObstacleSet(
       x: candidate.x,
       y: candidate.y,
       radius,
-      sides: variant === 'bumper' ? 8 : variant === 'barrier' ? 4 : 16,
+      sides: obstacleSides(variant),
       angle: rng() * Math.PI * 2,
       spin: (rng() < 0.5 ? -1 : 1) * clamp(0.5 + rng() * 1.15, 0.5, 1.65),
       variant,
@@ -145,7 +155,7 @@ export function createObstacleSet(
       x: candidate.x,
       y: candidate.y,
       radius,
-      sides: variant === 'bumper' ? 8 : variant === 'barrier' ? 4 : 16,
+      sides: obstacleSides(variant),
       angle: rng() * Math.PI * 2,
       spin: (rng() < 0.5 ? -1 : 1) * (0.5 + rng() * 1.15),
       variant,

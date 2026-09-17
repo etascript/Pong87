@@ -11,7 +11,7 @@ export const BALL_HIT_SPEED_STEP = 0.012;
 export const BALL_HIT_SPEED_MAX_MULTIPLIER = 1.26;
 export const BALL_RESPAWN_SPEED_RETENTION = 0.45;
 export const BALL_RESPAWN_MAX_CARRY_MULTIPLIER = 1.14;
-export const ABSOLUTE_MAX_BALLS = 6;
+export const ABSOLUTE_MAX_BALLS = 3;
 export const BALL_SPAWN_INTERVAL = 10;
 export const PLAYER_LIVES = 5;
 export const DEFAULT_SCORE_TIME = 150;
@@ -21,7 +21,7 @@ export const FIXED_DT = 1 / 60;
 export const ROUND_START_DELAY = 1.0;
 
 export function maxBallsForPlayerCount(playerCount: number) {
-  return Math.min(ABSOLUTE_MAX_BALLS, Math.max(3, Math.ceil(playerCount * 0.75)));
+  return ABSOLUTE_MAX_BALLS;
 }
 
 export function activeBallLimitForMatch(playerCount: number, matchElapsedSeconds: number) {

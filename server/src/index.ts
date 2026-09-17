@@ -44,6 +44,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const activityLogPath = join(__dirname, '..', 'logs', 'activity.jsonl');
 const publicDistPath = join(__dirname, '..', '..', 'dist');
 const READY_BOT_FILL_DELAY = 60;
+const INPUT_PATCH_RATE_MS = 1000 / 30;
+const PADDLE_MAX_STEP_PER_SECOND = 12;
 
 function writeActivity(event: string, payload: Record<string, unknown>) {
   try {
@@ -194,6 +196,7 @@ export class PongRoom extends Room<PongState> {
     }
 
     this.resetBall();
+    this.setPatchRate(INPUT_PATCH_RATE_MS);
     this.onMessage('input', (client, message: InputMessage) => this.handleInput(client, message));
     this.setSimulationInterval((delta) => this.update(delta / 1000), FIXED_DT * 1000);
   }
@@ -562,7 +565,7 @@ export class PongRoom extends Room<PongState> {
     for (const player of this.state.players.values()) {
       const target = this.inputs.get(player.id) ?? player.paddle;
       const previous = player.paddle;
-      player.paddle += (target - player.paddle) * Math.min(1, deltaSeconds * 18);
+      player.paddle += clamp(target - player.paddle, -PADDLE_MAX_STEP_PER_SECOND * deltaSeconds, PADDLE_MAX_STEP_PER_SECOND * deltaSeconds);
       this.paddleVelocities.set(player.id, (player.paddle - previous) / Math.max(deltaSeconds, 0.001));
     }
 
@@ -724,7 +727,7 @@ export class PongRoom extends Room<PongState> {
     const removedBall = this.state.balls[ballIndex];
     const inheritedSpeed = removedBall ? Math.hypot(removedBall.vx, removedBall.vy) : 0;
     this.state.balls.splice(ballIndex, 1);
-    if (this.state.phase === 'playing' && this.state.balls.length < activeBallLimitForMatch(this.state.sides, this.matchElapsed)) {
+    if (this.state.phase === 'playing' && this.state.balls.length === 0) {
       this.spawnBall(towardEdge, inheritedSpeed);
       this.ballSpawnTimer = 0;
     }

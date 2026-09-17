@@ -3,6 +3,7 @@ import { Client, Room } from 'colyseus.js';
 import * as THREE from 'three';
 import { createApp } from 'vue';
 import App from './App.vue';
+import { GameAudio, type GameSound } from './audio';
 import {
   arcadeJoinOptions,
   loadArcadeSession,
@@ -17,6 +18,7 @@ import { formatTime, normalizeMatchOptions as normalizeMatchOptionValues, ranked
 import { loadSettings, saveSettings as persistSettings } from './game/settings';
 import type { BallSnapshot, LobbyFlow, MenuView, ObstacleSnapshot, PongSnapshot } from './game/types';
 import { syncObstacleVisuals as syncObstacleMeshes } from './render/obstacles';
+import { createPaddleVisual, updatePaddleVisual, type PaddleVisual } from './render/paddles';
 import {
   ARENA_RADIUS,
   BALL_RADIUS,
@@ -46,12 +48,14 @@ import {
 } from '../../shared/geometry';
 import { createObstacleSet } from '../../shared/obstacles';
 import { syncBallVisuals } from './render/balls';
+import { createVfxSystem } from './render/vfx';
 
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Missing app root');
 
 let settings = loadSettings();
 const t = (key: TranslationKey) => translate(settings.language, key);
+const audio = new GameAudio(settings);
 
 createApp(App).mount(app);
 
@@ -111,7 +115,8 @@ camera.position.set(0, 0, 20);
 camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const worldGroup = new THREE.Group();
 const arenaGroup = new THREE.Group();
@@ -120,8 +125,13 @@ const obstacleGroup = new THREE.Group();
 const ballGroup = new THREE.Group();
 worldGroup.add(arenaGroup, paddleGroup, obstacleGroup, ballGroup);
 scene.add(worldGroup);
+const vfx = createVfxSystem(worldGroup);
 
 const colors = [0xff4f6d, 0x4fffa4, 0x65a6ff, 0xf7f75c, 0xff9a42, 0xca7cff, 0x42ecff, 0xffffff];
+const ONLINE_INPUT_INTERVAL_MS = 20;
+const ONLINE_INPUT_HEARTBEAT_MS = 90;
+const ONLINE_INPUT_EPSILON = 0.0015;
+const ONLINE_BALL_RENDER_LEAD_SECONDS = 0.075;
 const defaultWsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
 const pongServerUrl = import.meta.env.VITE_PONG_WS_URL || `${defaultWsProtocol}//${location.host || '127.0.0.1:2567'}`;
 const client = new Client(pongServerUrl);
@@ -134,6 +144,7 @@ let localPaddleTarget = 0.5;
 let localPaddleVelocity = 0;
 let paused = false;
 let lastSend = 0;
+let lastSentPaddle = Number.NaN;
 let offlineMode = false;
 let lobbyFlow: LobbyFlow = null;
 let lastFrame = performance.now();
@@ -154,6 +165,14 @@ let scoreFlash = 0;
 let scoreSignature = '';
 let arcadeSession: ArcadeSession | null = null;
 let reportedResultSignature = '';
+
+function unlockAudio() {
+  audio.unlock().catch(() => undefined);
+}
+
+function playSound(sound: GameSound, intensity = 1) {
+  audio.play(sound, intensity);
+}
 
 function rebuildArena(sides: number) {
   arenaGroup.clear();
@@ -178,23 +197,28 @@ function rebuildArena(sides: number) {
 
   for (let playerIndex = 0; playerIndex < sides; playerIndex += 1) {
     const edgeIndex = arenaEdgeForPlayer(playerIndex, sides);
-    const paddle = new THREE.Mesh(
-      new THREE.BoxGeometry(PADDLE_LENGTH, PADDLE_DEPTH, 0.18),
-      new THREE.MeshBasicMaterial({ color: colors[playerIndex % colors.length], transparent: true, opacity: 1 }),
-    );
-    paddle.userData.playerIndex = playerIndex;
-    paddle.userData.edgeIndex = edgeIndex;
+    const paddle = createPaddleVisual(colors[playerIndex % colors.length], playerIndex, edgeIndex);
     paddleGroup.add(paddle);
   }
 }
 
 function fitCamera() {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+  const viewport = canvas.parentElement?.getBoundingClientRect();
+  const width = Math.max(1, Math.round(viewport?.width || window.innerWidth));
+  const height = Math.max(1, Math.round(viewport?.height || window.innerHeight));
   const aspect = width / height;
-  const mobile = width < 720;
   const radius = playfieldRadius(snapshot.sides || DEFAULT_PLAYER_COUNT, ARENA_RADIUS);
-  const viewHeight = mobile ? radius * 2.75 : radius * 2.45;
+  const targetDiameter = (radius + PADDLE_DEPTH + BALL_RADIUS + 0.75) * 2;
+  const bottomControlPixels = width < 760 && shell.classList.contains('game-active')
+    ? Math.min(96, height * 0.2)
+    : 0;
+  const clearHeightRatio = Math.max(0.68, (height - bottomControlPixels) / height);
+  const viewHeight = Math.max(targetDiameter / aspect, targetDiameter / clearHeightRatio);
+  const bottomControlWorld = viewHeight * (bottomControlPixels / height);
+  const cameraCenterY = -bottomControlWorld / 2;
+
+  camera.position.set(0, cameraCenterY, 20);
+  camera.lookAt(0, cameraCenterY, 0);
   camera.top = viewHeight / 2;
   camera.bottom = -viewHeight / 2;
   camera.left = -viewHeight * aspect / 2;
@@ -402,6 +426,8 @@ async function leaveRoom() {
 
 async function startOffline() {
   await leaveRoom();
+  unlockAudio();
+  playSound('start');
   showLobby('single');
   const sides = clamp(Number(sidesInput.value), MIN_PLAYERS, MAX_PLAYERS);
   const options = normalizeMatchOptions();
@@ -466,12 +492,16 @@ async function launchFromArcade() {
 
 function attachRoom(nextRoom: Room) {
   mySessionId = nextRoom.sessionId;
+  lastSend = 0;
+  lastSentPaddle = Number.NaN;
   roomCode.textContent = nextRoom.roomId;
   joinInput.value = nextRoom.roomId;
   readyButton.disabled = false;
   statusText.textContent = t('connected');
   nextRoom.onStateChange((state: any) => {
+    const previousEvent = snapshot.lastEvent;
     snapshot = copyState(state);
+    spawnNetworkEventVfx(previousEvent, snapshot);
     rebuildArenaIfNeeded();
     fitCamera();
     syncUI();
@@ -497,8 +527,12 @@ function syncUI() {
   }
   scoreSignature = nextScoreSignature;
   const isGameActive = snapshot.phase === 'playing' || snapshot.phase === 'countdown';
+  const wasGameActive = shell.classList.contains('game-active');
   shell.classList.toggle('game-active', isGameActive);
   shell.classList.toggle('menu-open', !isGameActive);
+  if (wasGameActive !== isGameActive) {
+    fitCamera();
+  }
   pauseMenu.classList.toggle('hidden', !(offlineMode && paused && isGameActive));
   const showLobbyPanel = Boolean(lobbyFlow) && snapshot.phase !== 'playing' && snapshot.phase !== 'countdown';
   centerPanel.classList.toggle('hidden', !showLobbyPanel);
@@ -567,6 +601,7 @@ function setPaused(nextPaused: boolean) {
   paused = nextPaused;
   pauseButton.textContent = paused ? '>' : 'II';
   pressedKeys.clear();
+  playSound('pause');
   syncUI();
 }
 
@@ -574,8 +609,11 @@ function sendInput(force = false) {
   if (offlineMode) return;
   if (!room) return;
   const now = performance.now();
-  if (!force && now - lastSend < 33) return;
+  const changed = Math.abs(localPaddleTarget - lastSentPaddle) >= ONLINE_INPUT_EPSILON;
+  const heartbeatDue = now - lastSend >= ONLINE_INPUT_HEARTBEAT_MS;
+  if (!force && (!changed || now - lastSend < ONLINE_INPUT_INTERVAL_MS) && !heartbeatDue) return;
   lastSend = now;
+  lastSentPaddle = localPaddleTarget;
   room.send('input', { paddle: localPaddleTarget });
 }
 
@@ -585,6 +623,7 @@ function setPaddleTarget(value: number, force = false) {
 }
 
 function setChargeShot() {
+  playSound('charge');
   if (offlineMode) {
     const mine = snapshot.seats.find((player) => player.id === mySessionId);
     if (mine && mine.lives > 0) {
@@ -670,6 +709,7 @@ function isTypingTarget(target: EventTarget | null) {
 }
 
 window.addEventListener('keydown', (event) => {
+  unlockAudio();
   if (event.code === 'Escape' && offlineMode && (snapshot.phase === 'playing' || snapshot.phase === 'countdown')) {
     event.preventDefault();
     setPaused(!paused);
@@ -696,6 +736,13 @@ window.addEventListener('keyup', (event) => {
   }
 });
 
+document.addEventListener('pointerdown', (event) => {
+  unlockAudio();
+  if (event.target instanceof HTMLButtonElement) {
+    playSound('ui');
+  }
+}, { passive: true });
+
 singlePlayerButton.addEventListener('click', () => showLobby('single'));
 multiPlayerButton.addEventListener('click', () => showLobby('multi'));
 settingsButton.addEventListener('click', () => showMenuView('settings'));
@@ -712,11 +759,13 @@ languageInput.addEventListener('change', () => {
 musicVolumeInput.addEventListener('input', () => {
   settings = { ...settings, musicVolume: clamp(Number(musicVolumeInput.value), 0, 100) };
   musicVolumeValue.textContent = `${settings.musicVolume}%`;
+  audio.setSettings(settings);
   persistSettings(settings);
 });
 sfxVolumeInput.addEventListener('input', () => {
   settings = { ...settings, sfxVolume: clamp(Number(sfxVolumeInput.value), 0, 100) };
   sfxVolumeValue.textContent = `${settings.sfxVolume}%`;
+  audio.setSettings(settings);
   persistSettings(settings);
 });
 gameModeInput.addEventListener('change', syncMatchOptionUI);
@@ -735,6 +784,7 @@ readyButton.addEventListener('click', () => {
     return;
   }
   const mine = snapshot.seats.find((player) => player.id === mySessionId);
+  playSound('ready');
   room?.send('input', { ready: !mine?.ready });
 });
 pauseButton.addEventListener('click', () => {
@@ -853,6 +903,7 @@ function updateOffline(deltaSeconds: number) {
   if (snapshot.balls.length < activeBallLimit && ballSpawnTimer >= BALL_SPAWN_INTERVAL) {
     snapshot.balls.push(randomBall());
     snapshot.lastEvent = 'Nueva esfera';
+    playSound('spawn');
     ballSpawnTimer = 0;
   }
 
@@ -969,8 +1020,37 @@ function resolveObstacleCollisions(ball: BallSnapshot) {
     ball.x = obstacle.x + normal.x * (hitDistance + 0.05);
     ball.y = obstacle.y + normal.y * (hitDistance + 0.05);
     ball.chargedBy = -1;
+    vfx.spawn(ball.x, ball.y, obstacle.variant === 'bumper' ? 0xfff06a : 0x42ecff, 'obstacle', Math.atan2(normal.y, normal.x));
+    playSound('obstacle', 0.85 + Math.min(0.6, Math.hypot(ball.vx, ball.vy) / 18));
     snapshot.lastEvent = 'Obstaculo desvio';
     return;
+  }
+}
+
+function spawnNetworkEventVfx(previousEvent: string, nextSnapshot: PongSnapshot) {
+  if (previousEvent === nextSnapshot.lastEvent || offlineMode) return;
+  const primaryBall = activeBalls()[0];
+  if (!primaryBall) return;
+
+  const event = nextSnapshot.lastEvent;
+  const mine = nextSnapshot.seats.find((player) => player.id === mySessionId);
+  const edgeIndex = nextSnapshot.lastTouchEdge >= 0 ? nextSnapshot.lastTouchEdge : primaryBall.lastTouchEdge;
+  const color = edgeIndex >= 0 ? colors[edgeIndex % colors.length] : 0xffffff;
+  if (event.includes('Obstaculo')) {
+    vfx.spawn(primaryBall.x, primaryBall.y, 0x42ecff, 'obstacle', Math.atan2(primaryBall.vy, primaryBall.vx));
+    playSound('obstacle');
+  } else if (event.includes('bloqueo')) {
+    vfx.spawn(primaryBall.x, primaryBall.y, color, nextSnapshot.chargedBy >= 0 ? 'score' : 'pad', Math.atan2(primaryBall.vy, primaryBall.vx));
+    playSound(edgeIndex === mine?.edgeIndex ? 'pad' : 'wall');
+  } else if (event.includes('Muro') || event.includes('reboto')) {
+    vfx.spawn(primaryBall.x, primaryBall.y, 0xffffff, 'wall', Math.atan2(primaryBall.vy, primaryBall.vx));
+    playSound('wall');
+  } else if (event.includes('anota')) {
+    vfx.spawn(primaryBall.x, primaryBall.y, color, 'score', Math.atan2(primaryBall.vy, primaryBall.vx));
+    playSound(mine && event.includes(mine.name) ? 'scoreFor' : 'scoreAgainst');
+  } else if (event.includes('eliminado') || event.includes('perdio')) {
+    vfx.spawn(primaryBall.x, primaryBall.y, color, 'score', Math.atan2(primaryBall.vy, primaryBall.vx));
+    playSound(mine && event.includes(mine.name) ? 'scoreAgainst' : 'scoreFor');
   }
 }
 
@@ -998,6 +1078,8 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
       ball.x += edge.inward.x * (BALL_RADIUS - inwardDistance + 0.06);
       ball.y += edge.inward.y * (BALL_RADIUS - inwardDistance + 0.06);
       ball.chargedBy = -1;
+      vfx.spawn(ball.x, ball.y, 0xffffff, 'wall', edge.angle);
+      playSound('wall');
       snapshot.lastEvent = `Muro ${index + 1} reboto`;
       return;
     }
@@ -1025,9 +1107,13 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
         snapshot.lastTouchEdge = player.edgeIndex;
         snapshot.chargedBy = ball.chargedBy;
         player.charge = false;
+        vfx.spawn(ball.x, ball.y, colors[player.edgeIndex % colors.length], chargedHit ? 'score' : 'pad', edge.angle);
+        playSound(player.id === mySessionId ? 'pad' : 'wall');
         snapshot.lastEvent = `${player.name} bloqueo`;
       } else {
         ball.chargedBy = -1;
+        vfx.spawn(ball.x, ball.y, 0xffffff, 'wall', edge.angle);
+        playSound('wall');
         snapshot.lastEvent = `Muro ${player.edgeIndex + 1} reboto`;
       }
       return;
@@ -1039,12 +1125,17 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
         scorer.score += 1;
         snapshot.lastEvent = `${scorer.name} anota`;
         scoreFlash = 1;
+        vfx.spawn(ball.x, ball.y, colors[scorer.edgeIndex % colors.length], 'score', edge.angle);
+        playSound(scorer.id === mySessionId ? 'scoreFor' : player.id === mySessionId ? 'scoreAgainst' : 'scoreFor');
       } else {
         snapshot.lastEvent = `${player.name} fallo`;
+        if (player.id === mySessionId) playSound('scoreAgainst');
       }
     } else {
       player.lives = Math.max(0, player.lives - 1);
       snapshot.lastEvent = player.lives === 0 ? `${player.name} eliminado` : `${player.name} perdio una vida`;
+      vfx.spawn(ball.x, ball.y, colors[player.edgeIndex % colors.length], 'score', edge.angle);
+      playSound(player.id === mySessionId ? 'scoreAgainst' : 'scoreFor');
     }
 
     const alive = snapshot.mode === 'score'
@@ -1058,7 +1149,7 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
       snapshot.round += 1;
       const scoredBallSpeed = Math.hypot(ball.vx, ball.vy);
       snapshot.balls.splice(ballIndex, 1);
-      if (snapshot.balls.length < activeBallLimitForMatch(snapshot.sides, offlineMatchElapsed)) {
+      if (snapshot.balls.length === 0) {
         snapshot.balls.push(randomBall(player.edgeIndex, snapshot.sides, scoredBallSpeed));
         ballSpawnTimer = 0;
       }
@@ -1107,29 +1198,35 @@ function updateVisuals(time: number) {
 
     scoreFlash = Math.max(0, scoreFlash - deltaSeconds * 2.8);
     scoreStrip.style.filter = scoreFlash > 0 ? `brightness(${1 + scoreFlash * 0.8}) saturate(${1 + scoreFlash * 0.5})` : '';
-    syncBallVisuals(ballGroup, activeBalls(), colors, time);
+    syncBallVisuals(ballGroup, activeBalls(), colors, time, offlineMode ? 0 : ONLINE_BALL_RENDER_LEAD_SECONDS);
     syncObstacleMeshes(obstacleGroup, snapshot.obstacles, time);
+    vfx.update(time);
 
     const edges = polygonEdges(playfieldSides(snapshot.sides), playfieldRadius(snapshot.sides, ARENA_RADIUS));
     paddleGroup.children.forEach((child: THREE.Object3D) => {
-      const mesh = child as THREE.Mesh;
-      const playerIndex = mesh.userData.playerIndex as number;
-      const edgeIndex = mesh.userData.edgeIndex as number;
+      const paddle = child as PaddleVisual;
+      const playerIndex = paddle.userData.playerIndex as number;
+      const edgeIndex = paddle.userData.edgeIndex as number;
       const edge = edges[edgeIndex];
       const player = snapshot.seats[playerIndex];
       const eliminatedWall = snapshot.mode === 'elimination' && Boolean(player?.connected) && (player?.lives ?? 0) <= 0;
       const t = eliminatedWall ? 0.5 : player?.connected && player.id === mySessionId ? localPaddle : player?.paddle ?? 0.5;
       const center = pointOnEdge(edge, t);
-      mesh.position.set(
+      paddle.position.set(
         center.x + edge.inward.x * (eliminatedWall ? 0.05 : 0.28),
         center.y + edge.inward.y * (eliminatedWall ? 0.05 : 0.28),
         0.45,
       );
-      mesh.rotation.z = edge.angle;
-      mesh.scale.x = eliminatedWall ? edge.length / PADDLE_LENGTH : 1;
-      mesh.scale.y = eliminatedWall ? 0.32 : player?.connected ? 1 : 0.35;
-      const material = mesh.material as THREE.MeshBasicMaterial;
-      material.opacity = eliminatedWall ? 0.42 : 1;
+      paddle.rotation.z = edge.angle;
+      paddle.scale.x = eliminatedWall ? edge.length / PADDLE_LENGTH : 1;
+      paddle.scale.y = eliminatedWall ? 0.32 : player?.connected ? 1 : 0.35;
+      updatePaddleVisual(paddle, {
+        color: colors[playerIndex % colors.length],
+        connected: Boolean(player?.connected),
+        eliminatedWall,
+        charged: Boolean(player?.charge),
+        time,
+      });
     });
   }
 
@@ -1138,6 +1235,8 @@ function updateVisuals(time: number) {
 }
 
 window.addEventListener('resize', fitCamera);
+window.addEventListener('orientationchange', fitCamera);
+window.visualViewport?.addEventListener('resize', fitCamera);
 window.addEventListener('blur', () => {
   pressedKeys.clear();
   sendInput(true);
@@ -1156,6 +1255,19 @@ requestAnimationFrame(updateVisuals);
 
 (window as any).__THREE_GAME_DIAGNOSTICS__ = () => ({
   renderer: renderer.info.render,
+  canvas: {
+    css: canvas.getBoundingClientRect().toJSON(),
+    buffer: { width: canvas.width, height: canvas.height },
+    dpr: window.devicePixelRatio,
+  },
+  camera: {
+    left: camera.left,
+    right: camera.right,
+    top: camera.top,
+    bottom: camera.bottom,
+    x: camera.position.x,
+    y: camera.position.y,
+  },
   snapshot,
   connected: Boolean(room),
   mySessionId,

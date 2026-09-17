@@ -908,11 +908,16 @@ function updateOffline(deltaSeconds: number) {
     ballSpawnTimer = 0;
   }
 
-  for (let index = snapshot.balls.length - 1; index >= 0; index -= 1) {
-    const ball = snapshot.balls[index];
+  for (const ball of snapshot.balls) {
     ball.age += deltaSeconds;
     ball.x += ball.vx * deltaSeconds;
     ball.y += ball.vy * deltaSeconds;
+  }
+
+  resolveBallPairCollisions();
+
+  for (let index = snapshot.balls.length - 1; index >= 0; index -= 1) {
+    const ball = snapshot.balls[index];
     resolveObstacleCollisions(ball);
     resolveOfflineCollisions(ball, index);
   }
@@ -1028,6 +1033,45 @@ function resolveObstacleCollisions(ball: BallSnapshot) {
   }
 }
 
+function resolveBallPairCollisions() {
+  const hitDistance = BALL_RADIUS * 2;
+  const hitDistanceSq = hitDistance * hitDistance;
+
+  for (let firstIndex = 0; firstIndex < snapshot.balls.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < snapshot.balls.length; secondIndex += 1) {
+      const first = snapshot.balls[firstIndex];
+      const second = snapshot.balls[secondIndex];
+      const dx = second.x - first.x;
+      const dy = second.y - first.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq <= 0 || distanceSq > hitDistanceSq) continue;
+
+      const distance = Math.sqrt(distanceSq);
+      const normal = { x: dx / distance, y: dy / distance };
+      const overlap = hitDistance - distance;
+      first.x -= normal.x * overlap * 0.5;
+      first.y -= normal.y * overlap * 0.5;
+      second.x += normal.x * overlap * 0.5;
+      second.y += normal.y * overlap * 0.5;
+
+      const relativeVelocity = (first.vx - second.vx) * normal.x + (first.vy - second.vy) * normal.y;
+      if (relativeVelocity <= 0) continue;
+
+      first.vx -= normal.x * relativeVelocity;
+      first.vy -= normal.y * relativeVelocity;
+      second.vx += normal.x * relativeVelocity;
+      second.vy += normal.y * relativeVelocity;
+      first.chargedBy = -1;
+      second.chargedBy = -1;
+      const hitX = (first.x + second.x) * 0.5;
+      const hitY = (first.y + second.y) * 0.5;
+      vfx.spawn(hitX, hitY, 0xffffff, 'obstacle', Math.atan2(normal.y, normal.x));
+      playSound('obstacle', 0.75);
+      snapshot.lastEvent = 'Esferas chocaron';
+    }
+  }
+}
+
 function spawnNetworkEventVfx(previousEvent: string, nextSnapshot: PongSnapshot) {
   if (previousEvent === nextSnapshot.lastEvent || offlineMode) return;
   const primaryBall = activeBalls()[0];
@@ -1037,7 +1081,10 @@ function spawnNetworkEventVfx(previousEvent: string, nextSnapshot: PongSnapshot)
   const mine = nextSnapshot.seats.find((player) => player.id === mySessionId);
   const edgeIndex = nextSnapshot.lastTouchEdge >= 0 ? nextSnapshot.lastTouchEdge : primaryBall.lastTouchEdge;
   const color = edgeIndex >= 0 ? colors[edgeIndex % colors.length] : 0xffffff;
-  if (event.includes('Obstaculo')) {
+  if (event.includes('Esferas')) {
+    vfx.spawn(primaryBall.x, primaryBall.y, 0xffffff, 'obstacle', Math.atan2(primaryBall.vy, primaryBall.vx));
+    playSound('obstacle', 0.75);
+  } else if (event.includes('Obstaculo')) {
     vfx.spawn(primaryBall.x, primaryBall.y, 0x42ecff, 'obstacle', Math.atan2(primaryBall.vy, primaryBall.vx));
     playSound('obstacle');
   } else if (event.includes('bloqueo')) {

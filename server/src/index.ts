@@ -8,6 +8,7 @@ import { WebSocketTransport } from '@colyseus/ws-transport';
 import { ArraySchema, MapSchema, Schema, type } from '@colyseus/schema';
 import {
   ARENA_RADIUS,
+  BALL_PADDLE_COLLISION_RADIUS,
   BALL_RADIUS,
   BALL_SPAWN_INTERVAL,
   BALL_SPEED,
@@ -878,7 +879,7 @@ export class PongRoom extends Room<PongState> {
       const edge = edges[index];
       const fromA: Vec2 = { x: ball.x - edge.a.x, y: ball.y - edge.a.y };
       const inwardDistance = dot(fromA, edge.inward);
-      if (inwardDistance > BALL_RADIUS) continue;
+      if (inwardDistance > BALL_PADDLE_COLLISION_RADIUS) continue;
 
       const along = dot(fromA, edge.tangent);
       const t = along / edge.length;
@@ -887,6 +888,7 @@ export class PongRoom extends Room<PongState> {
       const playerIndex = arenaPlayerForEdge(index, this.state.sides);
       const player = playerIndex >= 0 ? this.state.seats[playerIndex] : undefined;
       if (!player) {
+        if (inwardDistance > BALL_RADIUS) continue;
         const velocity = reflect({ x: ball.vx, y: ball.vy }, edge.inward);
         ball.vx = velocity.x;
         ball.vy = velocity.y;
@@ -897,11 +899,19 @@ export class PongRoom extends Room<PongState> {
         this.state.lastEvent = `Muro ${index + 1} reboto`;
         return;
       }
-      const paddleHalf = paddleLengthForPlayerCount(this.state.sides) / edge.length / 2;
-      const eliminatedWall = this.state.mode === 'elimination' && player.connected && player.lives <= 0;
-      const insidePaddle = player.connected && player.lives > 0 && Math.abs(t - player.paddle) <= paddleHalf;
+      const paddleCollisionRadius = BALL_PADDLE_COLLISION_RADIUS;
+      const paddleHalf = (paddleLengthForPlayerCount(this.state.sides) + paddleCollisionRadius * 1.35) / edge.length / 2;
+      const eliminatedWall = this.state.mode === 'elimination'
+        && player.connected
+        && player.lives <= 0
+        && inwardDistance <= BALL_RADIUS;
+      const insidePaddle = player.connected
+        && player.lives > 0
+        && inwardDistance <= paddleCollisionRadius
+        && Math.abs(t - player.paddle) <= paddleHalf;
 
       if (insidePaddle || eliminatedWall) {
+        const collisionRadius = insidePaddle ? paddleCollisionRadius : BALL_RADIUS;
         const velocity = reflect({ x: ball.vx, y: ball.vy }, edge.inward);
         const influence = insidePaddle ? clamp((t - player.paddle) / paddleHalf, -1, 1) : 0;
         const edgeKick = Math.sign(influence) * Math.pow(Math.abs(influence), 0.72) * 3.7;
@@ -910,8 +920,8 @@ export class PongRoom extends Room<PongState> {
         ball.vy = velocity.y + edge.tangent.y * (edgeKick + motionKick);
         const chargedHit = insidePaddle && player.charge;
         this.accelerateBallAfterHit(ball, chargedHit ? 2.3 : 0);
-        ball.x += edge.inward.x * (BALL_RADIUS - inwardDistance + 0.05);
-        ball.y += edge.inward.y * (BALL_RADIUS - inwardDistance + 0.05);
+        ball.x += edge.inward.x * (collisionRadius - inwardDistance + 0.05);
+        ball.y += edge.inward.y * (collisionRadius - inwardDistance + 0.05);
         if (insidePaddle) {
           ball.lastTouchEdge = player.edgeIndex;
           ball.chargedBy = chargedHit ? player.edgeIndex : -1;
@@ -925,6 +935,8 @@ export class PongRoom extends Room<PongState> {
         }
         return;
       }
+
+      if (inwardDistance > BALL_RADIUS) continue;
 
       if (this.state.mode === 'score') {
         const scorer = this.state.seats[ball.lastTouchEdge];

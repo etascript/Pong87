@@ -451,7 +451,8 @@ input[type="range"] {
 
 .center-panel.invite-join .field-grid label:not(:first-child),
 .center-panel.invite-join #createButton,
-.center-panel.invite-join #joinInput {
+.center-panel.invite-join #joinInput,
+.center-panel.invite-join #readyButton {
   display: none;
 }
 

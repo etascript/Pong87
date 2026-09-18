@@ -875,6 +875,12 @@ sfxVolumeInput.addEventListener('input', () => {
 gameModeInput.addEventListener('change', syncMatchOptionUI);
 matchTimeInput.addEventListener('change', normalizeMatchOptions);
 livesInput.addEventListener('change', normalizeMatchOptions);
+nameInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && inviteJoinMode && !room) {
+    event.preventDefault();
+    joinRoom().catch(showError);
+  }
+});
 
 createButton.addEventListener('click', () => createRoom().catch(showError));
 joinButton.addEventListener('click', () => joinRoom().catch(showError));
@@ -1247,7 +1253,10 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
     const paddleCollisionRadius = BALL_PADDLE_COLLISION_RADIUS;
     const paddleHalf = (paddleLengthForPlayerCount(snapshot.sides) + paddleCollisionRadius * 1.35) / edge.length / 2;
     const visiblePaddle = player.id === mySessionId ? localPaddle : player.paddle;
-    const eliminatedWall = snapshot.mode === 'elimination' && player.connected && player.lives <= 0;
+    const eliminatedWall = snapshot.mode === 'elimination'
+      && player.connected
+      && player.lives <= 0
+      && inwardDistance <= BALL_RADIUS;
     const insidePaddle = player.connected
       && player.lives > 0
       && inwardDistance <= paddleCollisionRadius

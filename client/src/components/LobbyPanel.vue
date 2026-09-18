@@ -14,12 +14,12 @@
       </div>
       <div class="field-grid">
         <label>
-          <i>USR</i>
+          <i class="fa-solid fa-user" aria-hidden="true"></i>
           <span data-i18n="playerTag">Player tag</span>
           <input id="nameInput" maxlength="16" value="Jugador" />
         </label>
         <label>
-          <i>ARE</i>
+          <i class="fa-solid fa-dice-d8" aria-hidden="true"></i>
           <span data-i18n="arena">Arena</span>
           <select id="sidesInput">
             <option value="2">2</option>
@@ -32,7 +32,7 @@
           </select>
         </label>
         <label>
-          <i>MOD</i>
+          <i class="fa-solid fa-sliders" aria-hidden="true"></i>
           <span data-i18n="mode">Modo</span>
           <select id="gameModeInput">
             <option value="score" data-i18n="scoreRush">Score Rush</option>
@@ -40,12 +40,12 @@
           </select>
         </label>
         <label id="livesField">
-          <i>OBJ</i>
+          <i class="fa-solid fa-flag" aria-hidden="true"></i>
           <span data-i18n="lives">Vidas</span>
           <input id="livesInput" type="number" min="1" max="9" step="1" value="5" />
         </label>
         <label>
-          <i>TIM</i>
+          <i class="fa-solid fa-clock" aria-hidden="true"></i>
           <span data-i18n="matchTime">Tiempo</span>
           <select id="matchTimeInput">
             <option value="0" data-i18n="noLimit">Sin limite</option>

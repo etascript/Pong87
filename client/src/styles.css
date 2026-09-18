@@ -652,6 +652,30 @@ select {
   }
 }
 
+/* Font Awesome icon sizing and toggle states */
+.icon-button i {
+  display: block !important;
+  font-size: 1.08rem !important;
+  line-height: 1 !important;
+}
+
+.pause-toggle[data-paused="true"] .icon-pause,
+.pause-toggle[data-paused="false"] .icon-play {
+  display: none !important;
+}
+
+.menu-icon i {
+  display: block !important;
+  font-size: 1.08rem !important;
+  line-height: 1 !important;
+}
+
+.settings-stack label i.fa-solid,
+.field-grid label i.fa-solid {
+  font-size: 0.95rem !important;
+  letter-spacing: 0 !important;
+}
+
 .brand,
 .readout,
 .top-invite-actions,
@@ -2114,5 +2138,319 @@ button:disabled {
 
   .score-strip.compact .integrity i {
     height: 4px;
+  }
+}
+
+/* Final UI safety layer: must stay at EOF so old rules cannot hide lobby/menu panels. */
+.topbar {
+  align-items: stretch !important;
+  gap: 12px !important;
+  padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 8px max(14px, env(safe-area-inset-left)) !important;
+}
+
+.brand {
+  min-height: 76px !important;
+  border: 1px solid var(--ui-line, rgba(143, 248, 255, 0.58)) !important;
+  border-radius: 8px !important;
+  background:
+    linear-gradient(90deg, rgba(255, 163, 58, 0.1), transparent 20%),
+    linear-gradient(180deg, rgba(2, 13, 17, 0.96), rgba(1, 7, 10, 0.9)) !important;
+  box-shadow: inset 0 0 0 1px rgba(143, 248, 255, 0.08), 0 0 26px rgba(46, 231, 239, 0.12) !important;
+}
+
+.brand strong {
+  color: var(--ui-text, #edf8f3) !important;
+  letter-spacing: 0.08em !important;
+  text-shadow: none !important;
+}
+
+.brand small,
+#statusText {
+  color: var(--ui-cyan, #8ff8ff) !important;
+}
+
+.menu-layer {
+  display: grid !important;
+  place-items: center !important;
+  background:
+    linear-gradient(90deg, rgba(143, 248, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(143, 248, 255, 0.045) 1px, transparent 1px),
+    radial-gradient(circle at 50% 42%, rgba(46, 231, 239, 0.12), transparent 35%),
+    rgba(1, 5, 8, 0.42) !important;
+  background-size: 42px 42px, 42px 42px, auto, auto !important;
+}
+
+.menu-layer.hidden {
+  display: none !important;
+}
+
+.menu-panel,
+.center-panel {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  z-index: 6 !important;
+  transform: translate(-50%, -50%) !important;
+  display: grid !important;
+  width: min(94vw, 720px) !important;
+  max-height: min(88vh, 780px) !important;
+  overflow: auto !important;
+  gap: 18px !important;
+  padding: 24px !important;
+  border: 1px solid var(--ui-line, rgba(143, 248, 255, 0.58)) !important;
+  border-radius: 8px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 163, 58, 0.09), transparent 26%),
+    linear-gradient(315deg, rgba(46, 231, 239, 0.09), transparent 28%),
+    rgba(1, 9, 12, 0.94) !important;
+  color: var(--ui-text, #edf8f3) !important;
+  box-shadow: inset 0 0 0 1px rgba(143, 248, 255, 0.08), 0 20px 80px rgba(0, 0, 0, 0.58) !important;
+}
+
+.menu-panel[hidden],
+.center-panel.hidden {
+  display: none !important;
+}
+
+.setup-panel:not(.hidden),
+.waiting-panel:not(.hidden),
+.results-panel:not(.hidden) {
+  display: grid !important;
+}
+
+.setup-panel.hidden,
+.waiting-panel.hidden,
+.results-panel.hidden,
+.invite-panel.hidden {
+  display: none !important;
+}
+
+.menu-title-lockup {
+  display: grid !important;
+  justify-items: center !important;
+  gap: 8px !important;
+  padding: 58px 12px 6px !important;
+}
+
+.menu-panel h1 {
+  margin: 0 !important;
+  color: var(--ui-text, #edf8f3) !important;
+  font-size: clamp(2.55rem, 8vw, 4.4rem) !important;
+  line-height: 0.9 !important;
+  letter-spacing: 0.06em !important;
+  text-shadow: none !important;
+}
+
+.menu-title-lockup p,
+.menu-kicker,
+.panel-header small,
+.menu-section-title p {
+  color: var(--ui-cyan, #8ff8ff) !important;
+}
+
+.menu-buttons {
+  display: grid !important;
+  width: min(100%, 390px) !important;
+  justify-self: center !important;
+  gap: 12px !important;
+}
+
+.menu-buttons button {
+  display: grid !important;
+  grid-template-columns: 62px minmax(0, 1fr) !important;
+  align-items: center !important;
+  min-height: 64px !important;
+  padding: 0 16px !important;
+  border: 1px solid var(--ui-line, rgba(143, 248, 255, 0.58)) !important;
+  border-radius: 4px !important;
+  background: linear-gradient(90deg, rgba(46, 231, 239, 0.11), transparent 34%), rgba(1, 8, 11, 0.9) !important;
+  color: var(--ui-cyan, #8ff8ff) !important;
+  text-align: left !important;
+}
+
+.menu-buttons .primary-menu {
+  border-color: rgba(255, 163, 58, 0.96) !important;
+  background: linear-gradient(90deg, rgba(255, 163, 58, 0.24), transparent 38%), rgba(16, 11, 5, 0.88) !important;
+  color: #ffd9a0 !important;
+}
+
+.menu-buttons strong,
+.menu-buttons small {
+  display: block !important;
+}
+
+.menu-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  min-height: 44px !important;
+  border: 1px solid var(--ui-line-soft, rgba(143, 248, 255, 0.22)) !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  background: rgba(1, 8, 11, 0.8) !important;
+}
+
+.lobby-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.menu-tabs span {
+  display: grid !important;
+  place-items: center !important;
+  color: var(--ui-muted, #8db4b8) !important;
+  font-size: 0.58rem !important;
+}
+
+.menu-tabs .active {
+  color: #03120f !important;
+  background: linear-gradient(180deg, #83ffd3, #2ee7ef) !important;
+}
+
+.settings-stack,
+.field-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+  padding: 12px !important;
+  border: 1px solid rgba(143, 248, 255, 0.12) !important;
+  border-radius: 4px !important;
+  background: rgba(1, 8, 11, 0.48) !important;
+}
+
+.settings-stack label,
+.field-grid label {
+  display: grid !important;
+  grid-template-columns: 44px minmax(118px, 0.8fr) minmax(0, 1.35fr) !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-height: 50px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ui-cyan, #8ff8ff) !important;
+  text-transform: none !important;
+}
+
+.settings-stack input,
+.settings-stack select,
+.field-grid input,
+.field-grid select,
+.actions input,
+.invite-panel input {
+  min-height: 44px !important;
+  border: 1px solid rgba(143, 248, 255, 0.38) !important;
+  border-radius: 4px !important;
+  background: rgba(0, 6, 8, 0.92) !important;
+  color: var(--ui-text, #edf8f3) !important;
+}
+
+.panel-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  min-height: auto !important;
+  padding: 6px 8px 14px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(143, 248, 255, 0.2) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.panel-header span {
+  color: var(--ui-text, #edf8f3) !important;
+  font-size: clamp(1.55rem, 4vw, 2.1rem) !important;
+  text-shadow: none !important;
+}
+
+.panel-header strong {
+  min-width: 108px !important;
+  padding: 8px 10px !important;
+  border: 1px solid rgba(255, 163, 58, 0.66) !important;
+  border-radius: 4px !important;
+  background: rgba(255, 163, 58, 0.08) !important;
+  color: var(--ui-amber, #ffa33a) !important;
+  text-align: center !important;
+  text-shadow: none !important;
+}
+
+.actions {
+  display: grid !important;
+  grid-template-columns: 1fr minmax(130px, 0.8fr) 1fr !important;
+  gap: 10px !important;
+}
+
+.boot-actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+.actions button,
+.boot-actions button,
+.back-button {
+  min-height: 52px !important;
+  border: 1px solid var(--ui-line, rgba(143, 248, 255, 0.58)) !important;
+  border-radius: 4px !important;
+  background: rgba(1, 8, 11, 0.9) !important;
+  color: var(--ui-cyan, #8ff8ff) !important;
+  box-shadow: inset 0 0 16px rgba(143, 248, 255, 0.05) !important;
+}
+
+#createButton,
+.ready {
+  border-color: rgba(255, 163, 58, 0.9) !important;
+  color: #ffd9a0 !important;
+  background: linear-gradient(90deg, rgba(255, 163, 58, 0.2), transparent 38%), rgba(12, 8, 4, 0.9) !important;
+}
+
+.center-panel[data-flow="single"] .boot-actions,
+.center-panel[data-flow="multi"] .boot-actions {
+  grid-template-columns: 1fr !important;
+}
+
+.center-panel[data-flow="single"] .actions,
+.center-panel[data-flow="single"] #readyButton,
+.center-panel[data-flow="single"] #forceStartButton,
+.center-panel[data-flow="multi"] #offlineButton,
+#forceStartButton.hidden,
+#finishMatchButton.hidden {
+  display: none !important;
+}
+
+.center-panel.invite-join .field-grid label:not(:first-child),
+.center-panel.invite-join #createButton,
+.center-panel.invite-join #joinInput,
+.center-panel.invite-join #readyButton {
+  display: none !important;
+}
+
+@media (max-width: 560px) {
+  .menu-panel,
+  .center-panel {
+    width: min(94vw, 390px) !important;
+    max-height: min(88vh, 760px) !important;
+    gap: 14px !important;
+    padding: 18px !important;
+  }
+
+  .settings-stack label,
+  .field-grid label,
+  .range-field {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+  }
+
+  .settings-stack input,
+  .settings-stack select,
+  .field-grid input,
+  .field-grid select,
+  .range-field output,
+  .range-field input {
+    grid-column: 1 / -1 !important;
+  }
+
+  .panel-header,
+  .actions,
+  .boot-actions,
+  .invite-panel {
+    grid-template-columns: 1fr !important;
   }
 }

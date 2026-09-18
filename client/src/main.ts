@@ -1,4 +1,5 @@
 import './styles.css';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 import { Client, Room } from 'colyseus.js';
 import * as THREE from 'three';
 import { createApp } from 'vue';

@@ -14,23 +14,23 @@
       </div>
       <div class="menu-buttons">
         <button id="singlePlayerButton" class="primary-menu" type="button">
-          <span class="menu-icon">PLAY</span>
+          <span class="menu-icon"><i class="fa-solid fa-play" aria-hidden="true"></i></span>
           <span><strong data-i18n="singlePlayer">Single Player</strong><small>SINGLE / LOCAL</small></span>
         </button>
         <button id="multiPlayerButton" type="button">
-          <span class="menu-icon">NET</span>
+          <span class="menu-icon"><i class="fa-solid fa-users" aria-hidden="true"></i></span>
           <span><strong data-i18n="multiPlayer">Multi Player</strong><small>ONLINE ROOM</small></span>
         </button>
         <button id="settingsButton" type="button">
-          <span class="menu-icon">CFG</span>
+          <span class="menu-icon"><i class="fa-solid fa-gear" aria-hidden="true"></i></span>
           <span><strong data-i18n="settings">Configuracion</strong><small>EXPERIENCIA</small></span>
         </button>
         <button id="aboutButton" type="button">
-          <span class="menu-icon">INFO</span>
+          <span class="menu-icon"><i class="fa-solid fa-circle-info" aria-hidden="true"></i></span>
           <span><strong data-i18n="about">About Me</strong><small>CREADOR</small></span>
         </button>
         <button id="exitButton" class="ghost" type="button">
-          <span class="menu-icon">OUT</span>
+          <span class="menu-icon"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></span>
           <span><strong data-i18n="exit">Salir</strong><small>SISTEMA</small></span>
         </button>
       </div>
@@ -55,19 +55,19 @@
       </div>
       <div class="settings-stack">
         <label class="range-field">
-          <i>AUD</i>
+          <i class="fa-solid fa-music" aria-hidden="true"></i>
           <span data-i18n="musicVolume">Musica</span>
           <output id="musicVolumeValue">70%</output>
           <input id="musicVolumeInput" type="range" min="0" max="100" step="1" />
         </label>
         <label class="range-field">
-          <i>SFX</i>
+          <i class="fa-solid fa-volume-high" aria-hidden="true"></i>
           <span data-i18n="sfxVolume">Efectos</span>
           <output id="sfxVolumeValue">80%</output>
           <input id="sfxVolumeInput" type="range" min="0" max="100" step="1" />
         </label>
         <label>
-          <i>LAN</i>
+          <i class="fa-solid fa-globe" aria-hidden="true"></i>
           <span data-i18n="language">Idioma</span>
           <select id="languageInput">
             <option value="es">ES</option>

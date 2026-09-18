@@ -258,6 +258,7 @@ export class PongRoom extends Room<PongState> {
     if (!player) return;
 
     const matchAlreadyFinished = this.state.phase === 'results';
+    const activeMatch = this.state.phase === 'playing' || this.state.phase === 'countdown';
     const edgeIndex = player.edgeIndex;
     this.state.players.delete(client.sessionId);
     this.inputs.delete(client.sessionId);
@@ -265,7 +266,36 @@ export class PongRoom extends Room<PongState> {
     const arcadeUserId = this.arcadeUserIds.get(client.sessionId);
     this.arcadeUserIds.delete(client.sessionId);
 
-    if (!matchAlreadyFinished) {
+    if (!matchAlreadyFinished && this.clients.length === 0) {
+      writeActivity('player_left', { roomId: this.roomId, sessionId: client.sessionId, edgeIndex, afterResults: false, activeMatch });
+      writeActivity('room_empty_dispose', { roomId: this.roomId });
+      reportArcadeEvent(this.arcadeContext, 'room.left', {
+        sessionId: client.sessionId,
+        userId: arcadeUserId,
+        edgeIndex,
+        afterResults: false,
+        activeMatch,
+      });
+      this.disconnect();
+      return;
+    }
+
+    if (activeMatch) {
+      player.id = `bot-${player.edgeIndex}`;
+      player.name = `IA ${player.edgeIndex + 1}`;
+      player.connected = true;
+      player.ready = true;
+      player.charge = false;
+      this.paddleVelocities.set(player.id, 0);
+      this.state.lastEvent = `IA toma arista ${player.edgeIndex + 1}`;
+      writeActivity('player_replaced_by_bot', {
+        roomId: this.roomId,
+        sessionId: client.sessionId,
+        edgeIndex,
+        score: player.score,
+        lives: player.lives,
+      });
+    } else if (!matchAlreadyFinished) {
       player.connected = false;
       player.ready = false;
       player.charge = false;
@@ -277,21 +307,19 @@ export class PongRoom extends Room<PongState> {
       this.clearBots();
       this.readyDeadlineAt = 0;
       this.readyNoticeSecond = -1;
-      this.state.obstacles.clear();
-      this.state.balls.clear();
       this.obstacleTimer = 3.5;
       this.obstacleLifetime = 0;
-      this.state.phase = 'results';
       this.state.lastEvent = 'Un jugador salio';
       this.syncPrimaryBall();
     }
 
-    writeActivity('player_left', { roomId: this.roomId, sessionId: client.sessionId, edgeIndex, afterResults: matchAlreadyFinished });
+    writeActivity('player_left', { roomId: this.roomId, sessionId: client.sessionId, edgeIndex, afterResults: matchAlreadyFinished, activeMatch });
     reportArcadeEvent(this.arcadeContext, 'room.left', {
       sessionId: client.sessionId,
       userId: arcadeUserId,
       edgeIndex,
       afterResults: matchAlreadyFinished,
+      activeMatch,
     });
     if (this.clients.length === 0) {
       writeActivity('room_empty_dispose', { roomId: this.roomId });

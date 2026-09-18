@@ -72,6 +72,8 @@ const centerPanel = document.querySelector<HTMLDivElement>('#centerPanel')!;
 const setupPanel = document.querySelector<HTMLDivElement>('#setupPanel')!;
 const waitingPanel = document.querySelector<HTMLDivElement>('#waitingPanel')!;
 const waitingRoomCode = document.querySelector<HTMLElement>('#waitingRoomCode')!;
+const invitePanel = document.querySelector<HTMLDivElement>('#invitePanel')!;
+const inviteLinkInput = document.querySelector<HTMLInputElement>('#inviteLinkInput')!;
 const waitingRoster = document.querySelector<HTMLDivElement>('#waitingRoster')!;
 const resultsPanel = document.querySelector<HTMLDivElement>('#resultsPanel')!;
 const podiumList = document.querySelector<HTMLDivElement>('#podiumList')!;
@@ -98,6 +100,8 @@ const exitButton = document.querySelector<HTMLButtonElement>('#exitButton')!;
 const backButtons = document.querySelectorAll<HTMLButtonElement>('.back-button');
 const createButton = document.querySelector<HTMLButtonElement>('#createButton')!;
 const joinButton = document.querySelector<HTMLButtonElement>('#joinButton')!;
+const copyInviteButton = document.querySelector<HTMLButtonElement>('#copyInviteButton')!;
+const shareInviteButton = document.querySelector<HTMLButtonElement>('#shareInviteButton')!;
 const offlineButton = document.querySelector<HTMLButtonElement>('#offlineButton')!;
 const forceStartButton = document.querySelector<HTMLButtonElement>('#forceStartButton')!;
 const readyButton = document.querySelector<HTMLButtonElement>('#readyButton')!;
@@ -319,6 +323,70 @@ function normalizeMatchOptions() {
   return options;
 }
 
+function normalizeRoomCode(value: string) {
+  return value.replace(/[\s-]/g, '').toUpperCase();
+}
+
+function inviteRoomCode() {
+  const code = room?.roomId || roomCode.textContent || '';
+  return normalizeRoomCode(code === '----' || code === 'SOLO' ? '' : code);
+}
+
+function inviteLinkForRoom(code = inviteRoomCode()) {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('arcadeToken');
+  url.searchParams.delete('returnUrl');
+  url.searchParams.delete('offline');
+  url.searchParams.set('room', code);
+  return url.toString();
+}
+
+function updateInvitePanel() {
+  const code = inviteRoomCode();
+  const canInvite = Boolean(code) && Boolean(room) && !offlineMode;
+  invitePanel.classList.toggle('hidden', !canInvite);
+  copyInviteButton.disabled = !canInvite;
+  shareInviteButton.disabled = !canInvite;
+  shareInviteButton.hidden = !('share' in navigator);
+  inviteLinkInput.value = canInvite ? inviteLinkForRoom(code) : '';
+}
+
+async function copyInviteLink() {
+  const link = inviteLinkInput.value || inviteLinkForRoom();
+  if (!link) return;
+  try {
+    await navigator.clipboard.writeText(link);
+  } catch {
+    inviteLinkInput.hidden = false;
+    inviteLinkInput.select();
+    document.execCommand('copy');
+  }
+  statusText.textContent = t('copiedInvite');
+}
+
+async function shareInviteLink() {
+  const link = inviteLinkInput.value || inviteLinkForRoom();
+  if (!link || !('share' in navigator)) {
+    await copyInviteLink();
+    return;
+  }
+  await navigator.share({
+    title: t('inviteTitle'),
+    text: t('inviteText'),
+    url: link,
+  });
+}
+
+function applyInviteQuery() {
+  if (arcadeSession) return;
+  const params = new URLSearchParams(window.location.search);
+  const invitedRoom = normalizeRoomCode(params.get('room') || '');
+  if (!invitedRoom) return;
+  joinInput.value = invitedRoom;
+  showLobby('multi');
+  statusText.textContent = `${t('joinPlaceholder')}: ${invitedRoom}`;
+}
+
 function syncMatchOptionUI() {
   const mode = gameModeInput.value === 'elimination' ? 'elimination' : 'score';
   livesField.classList.toggle('hidden', mode !== 'elimination');
@@ -373,6 +441,7 @@ async function showMainMenu() {
   obstacleGroup.clear();
   roomCode.textContent = '----';
   joinInput.value = '';
+  updateInvitePanel();
   readyButton.disabled = true;
   showMenuView('main');
   syncUI();
@@ -386,6 +455,7 @@ function showLobby(flow: Exclude<LobbyFlow, null>) {
   centerPanel.classList.remove('hidden');
   lobbyTitle.textContent = flow === 'single' ? t('singlePlayerTitle') : t('multiPlayerTitle');
   roomCode.textContent = flow === 'single' ? 'SOLO' : '----';
+  updateInvitePanel();
   readyButton.disabled = flow === 'multi' && !room;
   syncUI();
 }
@@ -406,8 +476,9 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  const code = joinInput.value.trim().toUpperCase();
+  const code = normalizeRoomCode(joinInput.value);
   if (!code) return;
+  joinInput.value = code;
   offlineMode = false;
   await leaveRoom();
   showLobby('multi');
@@ -499,6 +570,7 @@ function attachRoom(nextRoom: Room) {
   joinInput.value = nextRoom.roomId;
   readyButton.disabled = false;
   statusText.textContent = t('connected');
+  updateInvitePanel();
   nextRoom.onStateChange((state: any) => {
     const previousEvent = snapshot.lastEvent;
     snapshot = copyState(state);
@@ -510,6 +582,7 @@ function attachRoom(nextRoom: Room) {
   nextRoom.onLeave(() => {
     statusText.textContent = t('disconnected');
     readyButton.disabled = true;
+    updateInvitePanel();
   });
 }
 
@@ -547,10 +620,15 @@ function syncUI() {
   const canForceStart = Boolean(room) && !offlineMode && snapshot.phase === 'lobby' && connectedHumans > 0 && connectedHumans < snapshot.sides;
   forceStartButton.classList.toggle('hidden', !canForceStart);
   forceStartButton.disabled = !canForceStart;
+  updateInvitePanel();
   readyButton.textContent = offlineMode ? t('restart') : mine?.ready ? t('waiting') : t('ready');
   statusText.textContent = `${snapshot.lastEvent}${snapshot.phase === 'countdown' ? ` ${Math.ceil(snapshot.countdown)}` : ''}`;
   modeText.textContent = snapshot.mode === 'score' ? 'SCORE' : offlineMode ? 'SIM' : room ? 'K.O.' : 'STANDBY';
   roundText.textContent = snapshot.matchTimeSeconds > 0 ? formatTime(snapshot.remainingTime) : `R-${String(snapshot.round).padStart(2, '0')}`;
+  const mobileScoreColumns = snapshot.sides >= 7 ? 4 : snapshot.sides >= 5 ? 3 : 2;
+  scoreStrip.classList.toggle('compact', snapshot.sides >= 5);
+  scoreStrip.style.setProperty('--score-columns-mobile', String(mobileScoreColumns));
+  scoreStrip.dataset.players = String(snapshot.sides);
 
   scoreStrip.innerHTML = snapshot.seats.map((player, index) => {
     const value = !player.connected
@@ -775,6 +853,8 @@ livesInput.addEventListener('change', normalizeMatchOptions);
 
 createButton.addEventListener('click', () => createRoom().catch(showError));
 joinButton.addEventListener('click', () => joinRoom().catch(showError));
+copyInviteButton.addEventListener('click', () => copyInviteLink().catch(showError));
+shareInviteButton.addEventListener('click', () => shareInviteLink().catch(showError));
 offlineButton.addEventListener('click', () => startOffline().catch(showError));
 forceStartButton.addEventListener('click', () => {
   room?.send('input', { forceStart: true });
@@ -888,6 +968,8 @@ function updateOffline(deltaSeconds: number) {
     return;
   }
 
+  if (snapshot.phase !== 'playing') return;
+
   offlineMatchElapsed += deltaSeconds;
   updateBotPaddles(deltaSeconds);
   updateOfflineObstacles(deltaSeconds);
@@ -917,6 +999,7 @@ function updateOffline(deltaSeconds: number) {
   resolveBallPairCollisions();
 
   for (let index = snapshot.balls.length - 1; index >= 0; index -= 1) {
+    if (snapshot.phase !== 'playing') break;
     const ball = snapshot.balls[index];
     resolveObstacleCollisions(ball);
     resolveOfflineCollisions(ball, index);
@@ -1193,6 +1276,9 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
       snapshot.phase = 'results';
       snapshot.lastEvent = alive[0] ? `${alive[0].name} gana` : 'Ronda terminada';
       snapshot.balls = [];
+      snapshot.obstacles = [];
+      snapshot.chargedBy = -1;
+      snapshot.ball = { x: 0, y: 0, vx: 0, vy: 0 };
     } else {
       snapshot.round += 1;
       const scoredBallSpeed = Math.hypot(ball.vx, ball.vy);
@@ -1304,7 +1390,9 @@ rebuildArena(DEFAULT_PLAYER_COUNT);
 fitCamera();
 applyI18n();
 syncMatchOptionUI();
-launchFromArcade().catch(showError);
+launchFromArcade()
+  .then(() => applyInviteQuery())
+  .catch(showError);
 requestAnimationFrame(updateVisuals);
 
 (window as any).__THREE_GAME_DIAGNOSTICS__ = () => ({

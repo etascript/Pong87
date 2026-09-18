@@ -59,6 +59,11 @@
         <span>ROOM</span>
         <strong id="waitingRoomCode">----</strong>
       </div>
+      <div id="invitePanel" class="invite-panel hidden">
+        <input id="inviteLinkInput" readonly aria-label="Invite link" />
+        <button id="copyInviteButton" type="button" data-i18n="copyInvite">Copiar link</button>
+        <button id="shareInviteButton" type="button" data-i18n="shareInvite">Compartir</button>
+      </div>
       <div id="waitingRoster" class="waiting-roster"></div>
     </div>
     <div id="resultsPanel" class="results-panel hidden">

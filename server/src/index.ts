@@ -46,6 +46,8 @@ const publicDistPath = join(__dirname, '..', '..', 'dist');
 const READY_BOT_FILL_DELAY = 60;
 const INPUT_PATCH_RATE_MS = 1000 / 30;
 const PADDLE_MAX_STEP_PER_SECOND = 12;
+const ROOM_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+const ROOM_CODE_LENGTH = 6;
 
 function writeActivity(event: string, payload: Record<string, unknown>) {
   try {
@@ -54,6 +56,14 @@ function writeActivity(event: string, payload: Record<string, unknown>) {
   } catch (error) {
     console.error('activity_log_failed', error);
   }
+}
+
+function makeRoomCode() {
+  let code = '';
+  for (let index = 0; index < ROOM_CODE_LENGTH; index += 1) {
+    code += ROOM_CODE_ALPHABET[Math.floor(Math.random() * ROOM_CODE_ALPHABET.length)];
+  }
+  return code;
 }
 
 class PlayerState extends Schema {
@@ -157,7 +167,7 @@ export class PongRoom extends Room<PongState> {
         ? Math.max(MIN_MATCH_TIME, requestedTime)
         : 0;
     this.maxClients = sides;
-    this.roomId = options.arcadeRoomId?.trim().slice(0, 32) || this.roomId.slice(0, 5).toUpperCase();
+    this.roomId = options.arcadeRoomId?.trim().slice(0, 32) || makeRoomCode();
     this.arcadeContext = {
       token: options.arcadeToken,
       roomId: options.arcadeRoomId || this.roomId,
@@ -246,34 +256,51 @@ export class PongRoom extends Room<PongState> {
     const player = this.state.players.get(client.sessionId);
     if (!player) return;
 
-    player.connected = false;
-    player.ready = false;
-    player.charge = false;
-    player.name = `Arista ${player.edgeIndex + 1}`;
-    player.id = `seat-${player.edgeIndex}`;
-    player.lives = this.state.livesPerPlayer;
-    player.score = 0;
-    player.paddle = 0.5;
+    const matchAlreadyFinished = this.state.phase === 'results';
+    const edgeIndex = player.edgeIndex;
     this.state.players.delete(client.sessionId);
     this.inputs.delete(client.sessionId);
     this.paddleVelocities.delete(client.sessionId);
     const arcadeUserId = this.arcadeUserIds.get(client.sessionId);
     this.arcadeUserIds.delete(client.sessionId);
-    this.clearBots();
-    this.readyDeadlineAt = 0;
-    this.readyNoticeSecond = -1;
-    this.state.obstacles.clear();
-    this.obstacleTimer = 3.5;
-    this.obstacleLifetime = 0;
-    this.state.phase = 'results';
-    this.state.lastEvent = 'Un jugador salio';
-    writeActivity('player_left', { roomId: this.roomId, sessionId: client.sessionId, edgeIndex: player.edgeIndex });
+
+    if (!matchAlreadyFinished) {
+      player.connected = false;
+      player.ready = false;
+      player.charge = false;
+      player.name = `Arista ${player.edgeIndex + 1}`;
+      player.id = `seat-${player.edgeIndex}`;
+      player.lives = this.state.livesPerPlayer;
+      player.score = 0;
+      player.paddle = 0.5;
+      this.clearBots();
+      this.readyDeadlineAt = 0;
+      this.readyNoticeSecond = -1;
+      this.state.obstacles.clear();
+      this.state.balls.clear();
+      this.obstacleTimer = 3.5;
+      this.obstacleLifetime = 0;
+      this.state.phase = 'results';
+      this.state.lastEvent = 'Un jugador salio';
+      this.syncPrimaryBall();
+    }
+
+    writeActivity('player_left', { roomId: this.roomId, sessionId: client.sessionId, edgeIndex, afterResults: matchAlreadyFinished });
     reportArcadeEvent(this.arcadeContext, 'room.left', {
       sessionId: client.sessionId,
       userId: arcadeUserId,
-      edgeIndex: player.edgeIndex,
+      edgeIndex,
+      afterResults: matchAlreadyFinished,
     });
-    this.resetBall();
+    if (this.clients.length === 0) {
+      writeActivity('room_empty_dispose', { roomId: this.roomId });
+      this.disconnect();
+      return;
+    }
+  }
+
+  onDispose() {
+    writeActivity('room_disposed', { roomId: this.roomId });
   }
 
   private handleInput(client: Client, message: InputMessage) {
@@ -304,7 +331,7 @@ export class PongRoom extends Room<PongState> {
       return;
     }
 
-    if (typeof message.ready === 'boolean') {
+    if (typeof message.ready === 'boolean' && this.state.phase === 'lobby') {
       player.ready = message.ready;
       if (!message.ready) {
         this.readyDeadlineAt = 0;
@@ -542,21 +569,31 @@ export class PongRoom extends Room<PongState> {
     const players = this.connectedPlayers();
     const topScore = Math.max(...players.map((player) => player.score), 0);
     const winners = players.filter((player) => player.score === topScore);
-    this.state.phase = 'lobby';
-    this.state.lastEvent = winners.length === 1 ? `${winners[0].name} gana por tiempo` : 'Empate por tiempo';
-    this.state.obstacles.clear();
-    this.humanPlayers().forEach((candidate) => {
-      candidate.ready = false;
-    });
     writeActivity('match_finished', {
       roomId: this.roomId,
       reason: 'time',
       winners: winners.map((player) => ({ id: player.id, name: player.name, edgeIndex: player.edgeIndex })),
       scores: players.map((player) => ({ id: player.id, name: player.name, edgeIndex: player.edgeIndex, score: player.score, lives: player.lives })),
     });
-    this.reportMatchFinished('time');
+    this.finishMatch('time', winners.length === 1 ? `${winners[0].name} gana por tiempo` : 'Empate por tiempo');
+  }
+
+  private finishMatch(reason: string, lastEvent: string) {
+    if (this.state.phase === 'results') return;
+    this.state.phase = 'results';
+    this.state.lastEvent = lastEvent;
+    this.state.obstacles.clear();
+    this.state.balls.clear();
+    this.readyDeadlineAt = 0;
+    this.readyNoticeSecond = -1;
+    this.humanPlayers().forEach((candidate) => {
+      candidate.ready = false;
+      candidate.charge = false;
+    });
+    this.reportMatchFinished(reason);
     this.clearBots();
-    this.resetBall();
+    this.syncPrimaryBall();
+    this.lock();
   }
 
   private update(deltaSeconds: number) {
@@ -624,6 +661,7 @@ export class PongRoom extends Room<PongState> {
     this.resolveBallPairCollisions();
 
     for (let index = this.state.balls.length - 1; index >= 0; index -= 1) {
+      if (this.state.phase !== 'playing') break;
       const ball = this.state.balls[index];
       this.resolveObstacleCollisions(ball);
       this.resolveBallCollisions(ball, index);
@@ -938,19 +976,13 @@ export class PongRoom extends Room<PongState> {
         ? this.connectedPlayers()
         : this.connectedPlayers().filter((candidate) => candidate.lives > 0);
       if (this.state.mode === 'elimination' && alive.length <= 1) {
-        this.state.phase = 'results';
-        this.state.lastEvent = alive[0] ? `${alive[0].name} gana` : 'Ronda terminada';
-        this.humanPlayers().forEach((candidate) => {
-          candidate.ready = false;
-        });
         writeActivity('match_finished', {
           roomId: this.roomId,
           reason: 'elimination',
           winners: alive.map((player) => ({ id: player.id, name: player.name, edgeIndex: player.edgeIndex })),
           scores: this.connectedPlayers().map((player) => ({ id: player.id, name: player.name, edgeIndex: player.edgeIndex, score: player.score, lives: player.lives })),
         });
-        this.reportMatchFinished('elimination');
-        this.clearBots();
+        this.finishMatch('elimination', alive[0] ? `${alive[0].name} gana` : 'Ronda terminada');
       } else {
         this.state.round += 1;
         this.removeBall(ballIndex, player.edgeIndex);

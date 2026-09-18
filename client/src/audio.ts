@@ -25,6 +25,31 @@ type VoiceOptions = {
   delay?: number;
 };
 
+type AudioAsset = {
+  url: string;
+  group: 'sfx' | 'music';
+  loop?: boolean;
+  gain?: number;
+};
+
+const publicBasePath = import.meta.env.BASE_URL || '/';
+const publicAudioUrl = (path: string) => `${publicBasePath}${path}`.replace(/\/{2,}/g, '/');
+
+const audioManifest: Partial<Record<GameSound | 'musicLoop', AudioAsset>> = {
+  ui: { url: publicAudioUrl('assets/audio/sfx/ui-click.webm'), group: 'sfx', gain: 0.85 },
+  ready: { url: publicAudioUrl('assets/audio/sfx/ready.webm'), group: 'sfx', gain: 0.9 },
+  charge: { url: publicAudioUrl('assets/audio/sfx/charge.webm'), group: 'sfx', gain: 0.95 },
+  pad: { url: publicAudioUrl('assets/audio/sfx/pad-hit.webm'), group: 'sfx', gain: 1 },
+  wall: { url: publicAudioUrl('assets/audio/sfx/wall-hit.webm'), group: 'sfx', gain: 0.82 },
+  obstacle: { url: publicAudioUrl('assets/audio/sfx/obstacle-hit.webm'), group: 'sfx', gain: 0.95 },
+  scoreFor: { url: publicAudioUrl('assets/audio/sfx/score-for.webm'), group: 'sfx', gain: 1 },
+  scoreAgainst: { url: publicAudioUrl('assets/audio/sfx/score-against.webm'), group: 'sfx', gain: 1 },
+  spawn: { url: publicAudioUrl('assets/audio/sfx/ball-spawn.webm'), group: 'sfx', gain: 0.9 },
+  start: { url: publicAudioUrl('assets/audio/sfx/start.webm'), group: 'sfx', gain: 0.9 },
+  pause: { url: publicAudioUrl('assets/audio/sfx/pause.webm'), group: 'sfx', gain: 0.78 },
+  musicLoop: { url: publicAudioUrl('assets/audio/music/neon-loop.webm'), group: 'music', loop: true, gain: 0.8 },
+};
+
 export class GameAudio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -32,6 +57,10 @@ export class GameAudio {
   private music: GainNode | null = null;
   private ambience: OscillatorNode | null = null;
   private ambienceGain: GainNode | null = null;
+  private musicSource: AudioBufferSourceNode | null = null;
+  private buffers = new Map<string, AudioBuffer>();
+  private missingAssets = new Set<string>();
+  private loadingAssets: Promise<void> | null = null;
   private settings: AudioSettings;
   private lastPlayed = new Map<GameSound, number>();
 
@@ -50,13 +79,116 @@ export class GameAudio {
     if (this.ctx.state !== 'running') {
       await this.ctx.resume();
     }
-    this.startAmbience();
+    await this.loadAssets();
+    if (!this.startMusicLoop()) {
+      this.startProceduralAmbience();
+    }
   }
 
   play(sound: GameSound, intensity = 1) {
     if (!this.ctx || this.ctx.state !== 'running') return;
     if (!this.canPlay(sound)) return;
+    if (this.playAsset(sound, intensity)) return;
+    this.playFallback(sound, intensity);
+  }
 
+  private ensureContext() {
+    if (this.ctx) return;
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    this.ctx = new AudioContextClass();
+    this.master = this.ctx.createGain();
+    this.sfx = this.ctx.createGain();
+    this.music = this.ctx.createGain();
+    this.sfx.connect(this.master);
+    this.music.connect(this.master);
+    this.master.connect(this.ctx.destination);
+    this.applyVolumes();
+  }
+
+  private async loadAssets() {
+    if (!this.ctx) return;
+    if (this.loadingAssets) {
+      await this.loadingAssets;
+      return;
+    }
+
+    this.loadingAssets = Promise.all(
+      Object.entries(audioManifest).map(async ([id, asset]) => {
+        if (!asset || this.buffers.has(id) || this.missingAssets.has(id)) return;
+        try {
+          const response = await fetch(asset.url);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.arrayBuffer();
+          this.buffers.set(id, await this.ctx!.decodeAudioData(data));
+        } catch {
+          this.missingAssets.add(id);
+        }
+      }),
+    ).then(() => undefined);
+
+    await this.loadingAssets;
+  }
+
+  private playAsset(sound: GameSound, intensity: number) {
+    const asset = audioManifest[sound];
+    const buffer = this.buffers.get(sound);
+    const target = asset?.group === 'music' ? this.music : this.sfx;
+    if (!this.ctx || !asset || !buffer || !target) return false;
+
+    const source = this.ctx.createBufferSource();
+    const gain = this.ctx.createGain();
+    source.buffer = buffer;
+    source.loop = Boolean(asset.loop);
+    gain.gain.value = (asset.gain ?? 1) * Math.max(0.35, Math.min(1.45, intensity));
+    source.connect(gain).connect(target);
+    source.start();
+    return true;
+  }
+
+  private startMusicLoop() {
+    const asset = audioManifest.musicLoop;
+    const buffer = this.buffers.get('musicLoop');
+    if (!this.ctx || !this.music || !asset || !buffer || this.musicSource) return Boolean(this.musicSource);
+
+    const source = this.ctx.createBufferSource();
+    const gain = this.ctx.createGain();
+    source.buffer = buffer;
+    source.loop = true;
+    gain.gain.value = asset.gain ?? 1;
+    source.connect(gain).connect(this.music);
+    source.start();
+    this.musicSource = source;
+    return true;
+  }
+
+  private applyVolumes() {
+    if (!this.sfx || !this.music) return;
+    this.sfx.gain.value = (this.settings.sfxVolume / 100) * 0.75;
+    this.music.gain.value = (this.settings.musicVolume / 100) * 0.22;
+  }
+
+  private startProceduralAmbience() {
+    if (!this.ctx || !this.music || this.ambience || this.musicSource) return;
+    this.ambience = this.ctx.createOscillator();
+    this.ambienceGain = this.ctx.createGain();
+    this.ambience.type = 'sine';
+    this.ambience.frequency.value = 58;
+    this.ambienceGain.gain.value = 0.22;
+    this.ambience.connect(this.ambienceGain).connect(this.music);
+    this.ambience.start();
+  }
+
+  private canPlay(sound: GameSound) {
+    const now = performance.now();
+    const cooldown = sound === 'pad' || sound === 'wall' ? 38 : sound === 'obstacle' ? 70 : 120;
+    const last = this.lastPlayed.get(sound) ?? -Infinity;
+    if (now - last < cooldown) return false;
+    this.lastPlayed.set(sound, now);
+    return true;
+  }
+
+  private playFallback(sound: GameSound, intensity = 1) {
     const amount = Math.max(0.35, Math.min(1.45, intensity));
     switch (sound) {
       case 'ui':
@@ -103,46 +235,6 @@ export class GameAudio {
         this.tone({ type: 'triangle', frequency: 500, endFrequency: 250, duration: 0.09, volume: 0.08 });
         break;
     }
-  }
-
-  private ensureContext() {
-    if (this.ctx) return;
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
-    this.ctx = new AudioContextClass();
-    this.master = this.ctx.createGain();
-    this.sfx = this.ctx.createGain();
-    this.music = this.ctx.createGain();
-    this.sfx.connect(this.master);
-    this.music.connect(this.master);
-    this.master.connect(this.ctx.destination);
-    this.applyVolumes();
-  }
-
-  private applyVolumes() {
-    if (!this.sfx || !this.music) return;
-    this.sfx.gain.value = (this.settings.sfxVolume / 100) * 0.75;
-    this.music.gain.value = (this.settings.musicVolume / 100) * 0.22;
-  }
-
-  private startAmbience() {
-    if (!this.ctx || !this.music || this.ambience) return;
-    this.ambience = this.ctx.createOscillator();
-    this.ambienceGain = this.ctx.createGain();
-    this.ambience.type = 'sine';
-    this.ambience.frequency.value = 58;
-    this.ambienceGain.gain.value = 0.22;
-    this.ambience.connect(this.ambienceGain).connect(this.music);
-    this.ambience.start();
-  }
-
-  private canPlay(sound: GameSound) {
-    const now = performance.now();
-    const cooldown = sound === 'pad' || sound === 'wall' ? 38 : sound === 'obstacle' ? 70 : 120;
-    const last = this.lastPlayed.get(sound) ?? -Infinity;
-    if (now - last < cooldown) return false;
-    this.lastPlayed.set(sound, now);
-    return true;
   }
 
   private tone(options: VoiceOptions) {

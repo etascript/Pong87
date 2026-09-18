@@ -419,12 +419,126 @@ input[type="range"] {
   box-shadow: none;
 }
 
-.about-copy {
+.about-copy,
+.about-grid p {
   min-height: 96px;
   padding: 10px;
   border: 1px solid rgba(255, 228, 94, 0.28);
   border-radius: 7px;
   background: rgba(255, 228, 94, 0.06);
+}
+
+.menu-panel[data-menu-view="about"] {
+  width: min(94vw, 720px);
+  max-height: min(86vh, 760px);
+  overflow-y: auto;
+}
+
+.about-profile {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.about-profile img {
+  width: 148px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  object-position: 50% 28%;
+  border: 1px solid rgba(39, 245, 255, 0.58);
+  border-radius: 8px;
+  box-shadow:
+    0 0 24px rgba(39, 245, 255, 0.2),
+    0 0 34px rgba(255, 61, 242, 0.12);
+}
+
+.about-intro {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.about-intro strong {
+  color: var(--yellow);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.about-code {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid rgba(39, 245, 255, 0.32);
+  border-radius: 7px;
+  background: rgba(3, 12, 28, 0.62);
+  color: var(--cyan);
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.about-code span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.about-grid div {
+  display: grid;
+  gap: 6px;
+}
+
+.about-grid h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 0.84rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.about-grid p {
+  min-height: 0;
+  color: var(--muted);
+}
+
+.about-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.about-chips span {
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 61, 242, 0.32);
+  border-radius: 7px;
+  background: rgba(255, 61, 242, 0.1);
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.about-contact {
+  display: block;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255, 228, 94, 0.4);
+  border-radius: 7px;
+  color: var(--yellow);
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  background: rgba(255, 228, 94, 0.07);
 }
 
 .center-panel.hidden {
@@ -889,6 +1003,20 @@ button:disabled {
   .invite-panel,
   .boot-actions {
     grid-template-columns: 1fr;
+  }
+
+  .menu-panel[data-menu-view="about"] {
+    max-height: min(88vh, 720px);
+  }
+
+  .about-profile,
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .about-profile img {
+    width: min(100%, 240px);
+    justify-self: center;
   }
 
   .score-strip {

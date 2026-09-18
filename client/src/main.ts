@@ -19,6 +19,7 @@ import { loadSettings, saveSettings as persistSettings } from './game/settings';
 import type { BallSnapshot, LobbyFlow, MenuView, ObstacleSnapshot, PongSnapshot } from './game/types';
 import { syncObstacleVisuals as syncObstacleMeshes } from './render/obstacles';
 import { createPaddleVisual, updatePaddleVisual, type PaddleVisual } from './render/paddles';
+import { createArenaVisuals, disposeArenaVisuals, updateArenaVisuals } from './render/arena';
 import {
   ARENA_RADIUS,
   BALL_PADDLE_COLLISION_RADIUS,
@@ -186,6 +187,7 @@ function playSound(sound: GameSound, intensity = 1) {
 }
 
 function rebuildArena(sides: number) {
+  disposeArenaVisuals(arenaGroup);
   arenaGroup.clear();
   paddleGroup.clear();
   const arenaSides = playfieldSides(sides);
@@ -193,18 +195,7 @@ function rebuildArena(sides: number) {
   const edges = polygonEdges(arenaSides, radius);
   currentArenaKey = `${sides}:${arenaSides}`;
 
-  edges.forEach((edge, index) => {
-    const playerIndex = arenaPlayerForEdge(index, sides);
-    const railColor = playerIndex >= 0 ? colors[playerIndex % colors.length] : 0xffffff;
-    const midpoint = pointOnEdge(edge, 0.5);
-    const rail = new THREE.Mesh(
-      new THREE.BoxGeometry(edge.length, 0.08, 0.08),
-      new THREE.MeshBasicMaterial({ color: railColor, transparent: true, opacity: playerIndex >= 0 ? 0.75 : 0.48 }),
-    );
-    rail.position.set(midpoint.x, midpoint.y, 0);
-    rail.rotation.z = edge.angle;
-    arenaGroup.add(rail);
-  });
+  arenaGroup.add(createArenaVisuals(sides, colors));
 
   for (let playerIndex = 0; playerIndex < sides; playerIndex += 1) {
     const edgeIndex = arenaEdgeForPlayer(playerIndex, sides);
@@ -1384,6 +1375,7 @@ function updateVisuals(time: number) {
     scoreStrip.style.filter = scoreFlash > 0 ? `brightness(${1 + scoreFlash * 0.8}) saturate(${1 + scoreFlash * 0.5})` : '';
     syncBallVisuals(ballGroup, activeBalls(), colors, time, offlineMode ? 0 : ONLINE_BALL_RENDER_LEAD_SECONDS);
     syncObstacleMeshes(obstacleGroup, snapshot.obstacles, time);
+    updateArenaVisuals(arenaGroup, time);
     vfx.update(time);
 
     const edges = polygonEdges(playfieldSides(snapshot.sides), playfieldRadius(snapshot.sides, ARENA_RADIUS));

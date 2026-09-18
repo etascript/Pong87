@@ -40,8 +40,40 @@
 
     <section class="menu-panel" data-menu-view="about" hidden>
       <div class="menu-kicker" data-i18n="subtitle">NEON GRID / PONG-84</div>
-      <h2 data-i18n="aboutTitle">About Me</h2>
-      <p class="about-copy" data-i18n="aboutBody">Proyecto personal para crear minijuegos web mobile-first.</p>
+      <div class="about-profile">
+        <img src="/assets/img/me.png" alt="Sebastian Cortes Perez" />
+        <div class="about-intro">
+          <h2 data-i18n="aboutTitle">About Me</h2>
+          <strong data-i18n="aboutRole">Full Stack Dev desde Chile</strong>
+          <p data-i18n="aboutBody">Analista Programador, estudiante de Ingenieria en Desarrollo de Software y constructor de plataformas web con mas de 5 anos de experiencia.</p>
+        </div>
+      </div>
+      <div class="about-code">
+        <span>const sebastian = {</span>
+        <span data-i18n="aboutCodeRole">rol: "Desarrollador Full Stack",</span>
+        <span data-i18n="aboutCodeFocus">focus: ["codigo limpio", "magia", "subir de nivel"],</span>
+        <span data-i18n="aboutCodeMotto">motto: "si no lo se hoy, lo aprendo manana"</span>
+        <span>};</span>
+      </div>
+      <div class="about-grid">
+        <div>
+          <h3 data-i18n="aboutNowTitle">Ahora</h3>
+          <p data-i18n="aboutNowBody">Full Stack Dev en Yoy Simulators, integrando Laravel, Vue, APIs, HubSpot, BBDD, VPS, DNS y AWS S3 sin perder el ritmo arcade.</p>
+        </div>
+        <div>
+          <h3 data-i18n="aboutPastTitle">Background</h3>
+          <p data-i18n="aboutPastBody">Continuidad para LATAM Airlines Cargo en 7 paises, Oracle/SQL bajo SLA y una ruta previa entre ASP.NET, ERPs y consultoria.</p>
+        </div>
+      </div>
+      <div class="about-chips" aria-label="Stack">
+        <span>Laravel</span>
+        <span>Vue.js</span>
+        <span>Spring Boot</span>
+        <span>Oracle Cloud</span>
+        <span>SQL</span>
+        <span>AWS S3</span>
+      </div>
+      <a class="about-contact" href="mailto:sebastiancortes.2202@gmail.com">sebastiancortes.2202@gmail.com</a>
       <button class="back-button" type="button" data-i18n="back">Volver</button>
     </section>
 

@@ -66,6 +66,7 @@ const menuLayer = document.querySelector<HTMLDivElement>('#menuLayer')!;
 const statusText = document.querySelector<HTMLSpanElement>('#statusText')!;
 const modeText = document.querySelector<HTMLSpanElement>('#modeText')!;
 const roundText = document.querySelector<HTMLSpanElement>('#roundText')!;
+const topInviteActions = document.querySelector<HTMLDivElement>('#topInviteActions')!;
 const roomCode = document.querySelector<HTMLElement>('#roomCode')!;
 const lobbyTitle = document.querySelector<HTMLSpanElement>('#lobbyTitle')!;
 const centerPanel = document.querySelector<HTMLDivElement>('#centerPanel')!;
@@ -102,6 +103,8 @@ const createButton = document.querySelector<HTMLButtonElement>('#createButton')!
 const joinButton = document.querySelector<HTMLButtonElement>('#joinButton')!;
 const copyInviteButton = document.querySelector<HTMLButtonElement>('#copyInviteButton')!;
 const shareInviteButton = document.querySelector<HTMLButtonElement>('#shareInviteButton')!;
+const topCopyInviteButton = document.querySelector<HTMLButtonElement>('#topCopyInviteButton')!;
+const topShareInviteButton = document.querySelector<HTMLButtonElement>('#topShareInviteButton')!;
 const offlineButton = document.querySelector<HTMLButtonElement>('#offlineButton')!;
 const forceStartButton = document.querySelector<HTMLButtonElement>('#forceStartButton')!;
 const readyButton = document.querySelector<HTMLButtonElement>('#readyButton')!;
@@ -344,10 +347,16 @@ function inviteLinkForRoom(code = inviteRoomCode()) {
 function updateInvitePanel() {
   const code = inviteRoomCode();
   const canInvite = Boolean(code) && Boolean(room) && !offlineMode;
+  const canShare = 'share' in navigator;
   invitePanel.classList.toggle('hidden', !canInvite);
+  topInviteActions.classList.toggle('hidden', !canInvite);
+  topInviteActions.classList.toggle('no-native-share', !canShare);
   copyInviteButton.disabled = !canInvite;
+  topCopyInviteButton.disabled = !canInvite;
   shareInviteButton.disabled = !canInvite;
-  shareInviteButton.hidden = !('share' in navigator);
+  topShareInviteButton.disabled = !canInvite;
+  shareInviteButton.hidden = !canShare;
+  topShareInviteButton.hidden = !canShare;
   inviteLinkInput.value = canInvite ? inviteLinkForRoom(code) : '';
 }
 
@@ -678,7 +687,8 @@ function maybeReportArcadeOfflineResult() {
 
 function setPaused(nextPaused: boolean) {
   paused = nextPaused;
-  pauseButton.textContent = paused ? '>' : 'II';
+  pauseButton.dataset.paused = String(paused);
+  pauseButton.setAttribute('aria-label', paused ? t('continueGame') : t('pauseTitle'));
   pressedKeys.clear();
   playSound('pause');
   syncUI();
@@ -855,6 +865,8 @@ createButton.addEventListener('click', () => createRoom().catch(showError));
 joinButton.addEventListener('click', () => joinRoom().catch(showError));
 copyInviteButton.addEventListener('click', () => copyInviteLink().catch(showError));
 shareInviteButton.addEventListener('click', () => shareInviteLink().catch(showError));
+topCopyInviteButton.addEventListener('click', () => copyInviteLink().catch(showError));
+topShareInviteButton.addEventListener('click', () => shareInviteLink().catch(showError));
 offlineButton.addEventListener('click', () => startOffline().catch(showError));
 forceStartButton.addEventListener('click', () => {
   room?.send('input', { forceStart: true });

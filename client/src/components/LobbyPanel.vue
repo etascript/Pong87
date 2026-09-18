@@ -1,16 +1,25 @@
 <template>
   <div id="centerPanel" class="center-panel hidden" data-flow="multi">
     <div class="panel-header">
-      <span id="lobbyTitle" data-i18n="arcadeLink">ARCADE LINK</span>
+      <div>
+        <span id="lobbyTitle" data-i18n="arcadeLink">ARCADE LINK</span>
+        <small>CREA O UNETE A UNA SALA</small>
+      </div>
       <strong id="roomCode">----</strong>
     </div>
     <div id="setupPanel" class="setup-panel">
+      <div class="menu-tabs lobby-tabs" aria-hidden="true">
+        <span class="active">CREAR SALA</span>
+        <span>UNIRSE A SALA</span>
+      </div>
       <div class="field-grid">
         <label>
+          <i>USR</i>
           <span data-i18n="playerTag">Player tag</span>
           <input id="nameInput" maxlength="16" value="Jugador" />
         </label>
         <label>
+          <i>ARE</i>
           <span data-i18n="arena">Arena</span>
           <select id="sidesInput">
             <option value="2">2</option>
@@ -23,6 +32,7 @@
           </select>
         </label>
         <label>
+          <i>MOD</i>
           <span data-i18n="mode">Modo</span>
           <select id="gameModeInput">
             <option value="score" data-i18n="scoreRush">Score Rush</option>
@@ -30,10 +40,12 @@
           </select>
         </label>
         <label id="livesField">
+          <i>OBJ</i>
           <span data-i18n="lives">Vidas</span>
           <input id="livesInput" type="number" min="1" max="9" step="1" value="5" />
         </label>
         <label>
+          <i>TIM</i>
           <span data-i18n="matchTime">Tiempo</span>
           <select id="matchTimeInput">
             <option value="0" data-i18n="noLimit">Sin limite</option>

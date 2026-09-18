@@ -138,7 +138,7 @@ worldGroup.add(arenaGroup, paddleGroup, obstacleGroup, ballGroup);
 scene.add(worldGroup);
 const vfx = createVfxSystem(worldGroup);
 
-const colors = [0xff4f6d, 0x4fffa4, 0x65a6ff, 0xf7f75c, 0xff9a42, 0xca7cff, 0x42ecff, 0xffffff];
+const colors = [0xffa33a, 0x36e7ff, 0xff654f, 0xf7e65d, 0x3ea4ff, 0xb47cff, 0xff5fae, 0x59ffd0];
 const ONLINE_INPUT_INTERVAL_MS = 20;
 const ONLINE_INPUT_HEARTBEAT_MS = 90;
 const ONLINE_INPUT_EPSILON = 0.0015;

@@ -1,33 +1,73 @@
 <template>
   <div id="menuLayer" class="menu-layer">
     <section class="menu-panel" data-menu-view="main">
-      <div class="menu-kicker" data-i18n="subtitle">NEON GRID / PONG-84</div>
-      <h1 data-i18n="mainMenuTitle">PONG 87</h1>
-      <p data-i18n="mainMenuSubtitle">Arcade neon chileno para 1 a 8 jugadores</p>
+      <div class="panel-corners" aria-hidden="true"></div>
+      <div class="menu-main-meta">
+        <span>GOOD</span>
+        <span>PONGS</span>
+        <span>ONLY</span>
+      </div>
+      <span class="menu-version">v1.0.0</span>
+      <div class="menu-title-lockup">
+        <h1 data-i18n="mainMenuTitle">PONG 87</h1>
+        <p data-i18n="subtitle">NEON GRID</p>
+      </div>
       <div class="menu-buttons">
-        <button id="singlePlayerButton" class="primary-menu" type="button" data-i18n="singlePlayer">Single Player</button>
-        <button id="multiPlayerButton" type="button" data-i18n="multiPlayer">Multi Player</button>
-        <button id="settingsButton" type="button" data-i18n="settings">Configuracion</button>
-        <button id="aboutButton" type="button" data-i18n="about">About Me</button>
-        <button id="exitButton" class="ghost" type="button" data-i18n="exit">Salir</button>
+        <button id="singlePlayerButton" class="primary-menu" type="button">
+          <span class="menu-icon">PLAY</span>
+          <span><strong data-i18n="singlePlayer">Single Player</strong><small>SINGLE / LOCAL</small></span>
+        </button>
+        <button id="multiPlayerButton" type="button">
+          <span class="menu-icon">NET</span>
+          <span><strong data-i18n="multiPlayer">Multi Player</strong><small>ONLINE ROOM</small></span>
+        </button>
+        <button id="settingsButton" type="button">
+          <span class="menu-icon">CFG</span>
+          <span><strong data-i18n="settings">Configuracion</strong><small>EXPERIENCIA</small></span>
+        </button>
+        <button id="aboutButton" type="button">
+          <span class="menu-icon">INFO</span>
+          <span><strong data-i18n="about">About Me</strong><small>CREADOR</small></span>
+        </button>
+        <button id="exitButton" class="ghost" type="button">
+          <span class="menu-icon">OUT</span>
+          <span><strong data-i18n="exit">Salir</strong><small>SISTEMA</small></span>
+        </button>
+      </div>
+      <div class="menu-footer-meta">
+        <span>ARCADE LOCAL</span>
+        <span>CHILE</span>
       </div>
     </section>
 
     <section class="menu-panel" data-menu-view="settings" hidden>
+      <div class="panel-corners" aria-hidden="true"></div>
       <div class="menu-kicker" data-i18n="subtitle">NEON GRID / PONG-84</div>
-      <h2 data-i18n="settingsTitle">Configuracion</h2>
+      <div class="menu-section-title">
+        <h2 data-i18n="settingsTitle">Configuracion</h2>
+        <p>AJUSTA TU EXPERIENCIA</p>
+      </div>
+      <div class="menu-tabs" aria-hidden="true">
+        <span class="active">GENERAL</span>
+        <span>JUEGO</span>
+        <span>VISUAL</span>
+        <span>AUDIO</span>
+      </div>
       <div class="settings-stack">
         <label class="range-field">
+          <i>AUD</i>
           <span data-i18n="musicVolume">Musica</span>
           <output id="musicVolumeValue">70%</output>
           <input id="musicVolumeInput" type="range" min="0" max="100" step="1" />
         </label>
         <label class="range-field">
+          <i>SFX</i>
           <span data-i18n="sfxVolume">Efectos</span>
           <output id="sfxVolumeValue">80%</output>
           <input id="sfxVolumeInput" type="range" min="0" max="100" step="1" />
         </label>
         <label>
+          <i>LAN</i>
           <span data-i18n="language">Idioma</span>
           <select id="languageInput">
             <option value="es">ES</option>
@@ -39,6 +79,7 @@
     </section>
 
     <section class="menu-panel" data-menu-view="about" hidden>
+      <div class="panel-corners" aria-hidden="true"></div>
       <div class="menu-kicker" data-i18n="subtitle">NEON GRID / PONG-84</div>
       <div class="about-profile">
         <img src="/assets/img/me.png" alt="Sebastian Cortes Perez" />
@@ -78,6 +119,7 @@
     </section>
 
     <section class="menu-panel" data-menu-view="exit" hidden>
+      <div class="panel-corners" aria-hidden="true"></div>
       <div class="menu-kicker" data-i18n="subtitle">NEON GRID / PONG-84</div>
       <h2 data-i18n="exitTitle">Salir</h2>
       <p class="about-copy" data-i18n="exitBody">En web no siempre se puede cerrar la pestana desde el juego.</p>

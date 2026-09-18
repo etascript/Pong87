@@ -74,6 +74,7 @@
       <button id="offlineButton" class="offline" type="button" data-i18n="cpuJam">CPU Jam</button>
       <button id="forceStartButton" class="force-start hidden" type="button" data-i18n="fillWithBots">Completar con IA</button>
       <button id="readyButton" class="ready" type="button" disabled data-i18n="ready">Ready</button>
+      <button id="finishMatchButton" class="finish-match hidden" type="button" data-i18n="finishMatch">Terminar partida</button>
       <button id="menuBackButton" class="ghost" type="button" data-i18n="mainMenu">Menu</button>
     </div>
   </div>

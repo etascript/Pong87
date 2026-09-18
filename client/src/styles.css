@@ -435,12 +435,27 @@ input[type="range"] {
 .center-panel[data-flow="single"] #readyButton,
 .center-panel[data-flow="single"] #forceStartButton,
 .center-panel[data-flow="multi"] #offlineButton,
-#forceStartButton.hidden {
+#forceStartButton.hidden,
+#finishMatchButton.hidden {
   display: none;
 }
 
 .center-panel[data-flow="single"] .boot-actions,
 .center-panel[data-flow="multi"] .boot-actions {
+  grid-template-columns: 1fr;
+}
+
+.center-panel.invite-join .field-grid {
+  grid-template-columns: minmax(180px, 1fr);
+}
+
+.center-panel.invite-join .field-grid label:not(:first-child),
+.center-panel.invite-join #createButton,
+.center-panel.invite-join #joinInput {
+  display: none;
+}
+
+.center-panel.invite-join .actions {
   grid-template-columns: 1fr;
 }
 
@@ -616,6 +631,13 @@ select:focus {
   border-color: rgba(255, 228, 94, 0.62);
   background: linear-gradient(180deg, rgba(255, 228, 94, 0.26), rgba(255, 61, 242, 0.18));
   color: var(--yellow);
+}
+
+.finish-match {
+  grid-column: 1 / -1;
+  border-color: rgba(39, 245, 255, 0.64);
+  background: linear-gradient(180deg, rgba(39, 245, 255, 0.22), rgba(255, 61, 242, 0.18));
+  color: var(--cyan);
 }
 
 button {

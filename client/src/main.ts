@@ -21,6 +21,7 @@ import { syncObstacleVisuals as syncObstacleMeshes } from './render/obstacles';
 import { createPaddleVisual, updatePaddleVisual, type PaddleVisual } from './render/paddles';
 import {
   ARENA_RADIUS,
+  BALL_PADDLE_COLLISION_RADIUS,
   BALL_RADIUS,
   BALL_SPAWN_INTERVAL,
   BALL_SPEED,
@@ -108,6 +109,7 @@ const topShareInviteButton = document.querySelector<HTMLButtonElement>('#topShar
 const offlineButton = document.querySelector<HTMLButtonElement>('#offlineButton')!;
 const forceStartButton = document.querySelector<HTMLButtonElement>('#forceStartButton')!;
 const readyButton = document.querySelector<HTMLButtonElement>('#readyButton')!;
+const finishMatchButton = document.querySelector<HTMLButtonElement>('#finishMatchButton')!;
 const menuBackButton = document.querySelector<HTMLButtonElement>('#menuBackButton')!;
 const pauseButton = document.querySelector<HTMLButtonElement>('#pauseButton')!;
 const gameExitButton = document.querySelector<HTMLButtonElement>('#gameExitButton')!;
@@ -173,6 +175,7 @@ let scoreFlash = 0;
 let scoreSignature = '';
 let arcadeSession: ArcadeSession | null = null;
 let reportedResultSignature = '';
+let inviteJoinMode = false;
 
 function unlockAudio() {
   audio.unlock().catch(() => undefined);
@@ -391,6 +394,7 @@ function applyInviteQuery() {
   const params = new URLSearchParams(window.location.search);
   const invitedRoom = normalizeRoomCode(params.get('room') || '');
   if (!invitedRoom) return;
+  inviteJoinMode = true;
   joinInput.value = invitedRoom;
   showLobby('multi');
   statusText.textContent = `${t('joinPlaceholder')}: ${invitedRoom}`;
@@ -436,6 +440,7 @@ function showMenuView(view: MenuView) {
 
 async function showMainMenu() {
   setPaused(false);
+  inviteJoinMode = false;
   gameExitButton.hidden = true;
   offlineMode = false;
   await leaveRoom();
@@ -461,6 +466,7 @@ function showLobby(flow: Exclude<LobbyFlow, null>) {
   gameExitButton.hidden = false;
   menuLayer.classList.add('hidden');
   centerPanel.dataset.flow = flow;
+  centerPanel.classList.toggle('invite-join', inviteJoinMode && flow === 'multi' && !room);
   centerPanel.classList.remove('hidden');
   lobbyTitle.textContent = flow === 'single' ? t('singlePlayerTitle') : t('multiPlayerTitle');
   roomCode.textContent = flow === 'single' ? 'SOLO' : '----';
@@ -470,6 +476,7 @@ function showLobby(flow: Exclude<LobbyFlow, null>) {
 }
 
 async function createRoom() {
+  inviteJoinMode = false;
   offlineMode = false;
   await leaveRoom();
   showLobby('multi');
@@ -572,6 +579,8 @@ async function launchFromArcade() {
 }
 
 function attachRoom(nextRoom: Room) {
+  inviteJoinMode = false;
+  centerPanel.classList.remove('invite-join');
   mySessionId = nextRoom.sessionId;
   lastSend = 0;
   lastSentPaddle = Number.NaN;
@@ -610,6 +619,9 @@ function syncUI() {
   }
   scoreSignature = nextScoreSignature;
   const isGameActive = snapshot.phase === 'playing' || snapshot.phase === 'countdown';
+  const canPause = offlineMode && isGameActive;
+  pauseButton.hidden = !canPause;
+  gameExitButton.hidden = !(Boolean(room) || offlineMode || isGameActive);
   const wasGameActive = shell.classList.contains('game-active');
   shell.classList.toggle('game-active', isGameActive);
   shell.classList.toggle('menu-open', !isGameActive);
@@ -629,6 +641,9 @@ function syncUI() {
   const canForceStart = Boolean(room) && !offlineMode && snapshot.phase === 'lobby' && connectedHumans > 0 && connectedHumans < snapshot.sides;
   forceStartButton.classList.toggle('hidden', !canForceStart);
   forceStartButton.disabled = !canForceStart;
+  finishMatchButton.classList.toggle('hidden', snapshot.phase !== 'results');
+  finishMatchButton.disabled = snapshot.phase !== 'results';
+  joinButton.textContent = inviteJoinMode ? t('joinRoom') : t('link');
   updateInvitePanel();
   readyButton.textContent = offlineMode ? t('restart') : mine?.ready ? t('waiting') : t('ready');
   statusText.textContent = `${snapshot.lastEvent}${snapshot.phase === 'countdown' ? ` ${Math.ceil(snapshot.countdown)}` : ''}`;
@@ -883,6 +898,7 @@ readyButton.addEventListener('click', () => {
 pauseButton.addEventListener('click', () => {
   setPaused(!paused);
 });
+finishMatchButton.addEventListener('click', () => showMainMenu().catch(showError));
 gameExitButton.addEventListener('click', () => showMainMenu().catch(showError));
 resumeButton.addEventListener('click', () => setPaused(false));
 pauseExitButton.addEventListener('click', () => showMainMenu().catch(showError));
@@ -1204,7 +1220,7 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
     const edge = edges[index];
     const fromA: Vec2 = { x: ball.x - edge.a.x, y: ball.y - edge.a.y };
     const inwardDistance = dot(fromA, edge.inward);
-    if (inwardDistance > BALL_RADIUS) continue;
+    if (inwardDistance > BALL_PADDLE_COLLISION_RADIUS) continue;
 
     const along = dot(fromA, edge.tangent);
     const t = along / edge.length;
@@ -1214,6 +1230,7 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
     const player = playerIndex >= 0 ? snapshot.seats[playerIndex] : undefined;
     const isWallEdge = !player;
     if (isWallEdge) {
+      if (inwardDistance > BALL_RADIUS) continue;
       const velocity = reflect({ x: ball.vx, y: ball.vy }, edge.inward);
       ball.vx = velocity.x;
       ball.vy = velocity.y;
@@ -1227,12 +1244,17 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
       return;
     }
 
-    const paddleHalf = paddleLengthForPlayerCount(snapshot.sides) / edge.length / 2;
+    const paddleCollisionRadius = BALL_PADDLE_COLLISION_RADIUS;
+    const paddleHalf = (paddleLengthForPlayerCount(snapshot.sides) + paddleCollisionRadius * 1.35) / edge.length / 2;
     const visiblePaddle = player.id === mySessionId ? localPaddle : player.paddle;
     const eliminatedWall = snapshot.mode === 'elimination' && player.connected && player.lives <= 0;
-    const insidePaddle = player.connected && player.lives > 0 && Math.abs(t - visiblePaddle) <= paddleHalf;
+    const insidePaddle = player.connected
+      && player.lives > 0
+      && inwardDistance <= paddleCollisionRadius
+      && Math.abs(t - visiblePaddle) <= paddleHalf;
 
     if (insidePaddle || eliminatedWall) {
+      const collisionRadius = insidePaddle ? paddleCollisionRadius : BALL_RADIUS;
       const velocity = reflect({ x: ball.vx, y: ball.vy }, edge.inward);
       const influence = insidePaddle ? clamp((t - visiblePaddle) / paddleHalf, -1, 1) : 0;
       const edgeKick = Math.sign(influence) * Math.pow(Math.abs(influence), 0.72) * 3.7;
@@ -1242,8 +1264,8 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
       ball.vy = velocity.y + edge.tangent.y * (edgeKick + motionKick);
       const chargedHit = insidePaddle && player.charge;
       accelerateBallAfterHit(ball, chargedHit ? 2.3 : 0);
-      ball.x += edge.inward.x * (BALL_RADIUS - inwardDistance + 0.06);
-      ball.y += edge.inward.y * (BALL_RADIUS - inwardDistance + 0.06);
+      ball.x += edge.inward.x * (collisionRadius - inwardDistance + 0.06);
+      ball.y += edge.inward.y * (collisionRadius - inwardDistance + 0.06);
       if (insidePaddle) {
         ball.lastTouchEdge = player.edgeIndex;
         ball.chargedBy = chargedHit ? player.edgeIndex : -1;
@@ -1261,6 +1283,8 @@ function resolveOfflineCollisions(ball: BallSnapshot, ballIndex: number) {
       }
       return;
     }
+
+    if (inwardDistance > BALL_RADIUS) continue;
 
     if (snapshot.mode === 'score') {
       const scorer = snapshot.seats[ball.lastTouchEdge];

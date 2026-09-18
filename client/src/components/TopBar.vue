@@ -20,7 +20,7 @@
         </svg>
       </button>
     </div>
-    <button id="pauseButton" class="icon-button pause-toggle" type="button" aria-label="Pausa" data-paused="false">
+    <button id="pauseButton" class="icon-button pause-toggle" type="button" aria-label="Pausa" data-paused="false" hidden>
       <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M7 5h3v14H7zM14 5h3v14h-3z" />
       </svg>

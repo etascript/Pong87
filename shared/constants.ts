@@ -6,6 +6,7 @@ export const ARENA_RADIUS = 8;
 export const PADDLE_LENGTH = 2.7;
 export const PADDLE_DEPTH = 0.34;
 export const BALL_RADIUS = 0.28;
+export const BALL_PADDLE_COLLISION_RADIUS = BALL_RADIUS * 1.32;
 export const BALL_SPEED = 7.85;
 export const BALL_HIT_SPEED_STEP = 0.012;
 export const BALL_HIT_SPEED_MAX_MULTIPLIER = 1.26;

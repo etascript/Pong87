@@ -1,0 +1,29 @@
+name: Deploy Pong87
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+
+            cd /srv/apps/Pong87
+
+            git fetch origin master
+            git reset --hard origin/master
+
+            docker compose up -d --build
+
+            docker compose ps
